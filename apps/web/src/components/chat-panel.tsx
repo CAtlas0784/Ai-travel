@@ -56,7 +56,13 @@ export function ChatPanel({ messages, streaming, onSend, onStop, onRegenerate }:
             animate={{ opacity: 1, y: 0 }}
             className={`flex ${message.role === "USER" ? "justify-end" : "justify-start"}`}
           >
-            <div className={`max-w-[86%] rounded-2xl px-4 py-3 ${message.role === "USER" ? "bg-primary text-white" : "bg-white/75 dark:bg-white/7"}`}>
+            <div
+              className={`max-w-[86%] rounded-2xl border px-4 py-3 ${
+                message.role === "USER"
+                  ? "border-primary bg-primary text-white"
+                  : "border-slate-200 bg-slate-100 text-slate-900 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100"
+              }`}
+            >
               {message.role === "ASSISTANT" ? <MarkdownMessage content={message.content} /> : <p className="text-sm leading-7">{message.content}</p>}
               {message.imageUrl && <img src={message.imageUrl} alt="" className="mt-3 max-h-72 rounded-xl object-cover" />}
               <div className="mt-2 flex items-center justify-between gap-4 text-[11px] opacity-70">
