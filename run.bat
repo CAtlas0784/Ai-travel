@@ -111,7 +111,11 @@ pause
 goto menu
 
 :ensureDependencies
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24"
+if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
+set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
+>"%RUN_LOG%" echo AI Travel launcher log - %date% %time%
+echo Log: %RUN_LOG%
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -LogPath "%RUN_LOG%" 2>>"%RUN_LOG%"
 if errorlevel 11 goto prerequisitesFailed
 if errorlevel 10 goto useLocalNode
 if errorlevel 1 goto prerequisitesFailed
@@ -129,15 +133,20 @@ npm --version
 if exist "%PROJECT_ROOT%node_modules" exit /b 0
 echo node_modules is missing. Installing project dependencies...
 pushd "%PROJECT_ROOT%"
-call npm install
+call npm install >>"%RUN_LOG%" 2>&1
 set "INSTALL_RESULT=%ERRORLEVEL%"
 popd
+type "%RUN_LOG%"
 if not "%INSTALL_RESULT%"=="0" goto prerequisitesFailed
 exit /b 0
 
 :prerequisitesFailed
 echo.
 echo Requirements could not be prepared. Check the message above and try again.
+if defined RUN_LOG (
+  echo Details saved to "%RUN_LOG%":
+  if exist "%RUN_LOG%" type "%RUN_LOG%"
+)
 pause
 set "KEEP_MENU_OUTPUT=1"
 exit /b 1

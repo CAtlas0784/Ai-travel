@@ -71,6 +71,8 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 
 3. เลือกโหมดจากเมนู `run.bat` จะตรวจ Node.js/npm ก่อน และติดตั้ง project dependencies ด้วย `npm install` หากยังไม่มี `node_modules`
 
+หากตรวจ requirement หรือดาวน์โหลดไม่สำเร็จ ให้ดูข้อความที่หน้าจอค้างไว้และ log ที่ `.tools/run.log` แล้วส่ง log นี้มาเพื่อช่วยวิเคราะห์ได้ ไฟล์ใน `.tools/` จะไม่ถูก commit ขึ้น Git
+
 เปิดเว็บ local ที่ `http://127.0.0.1:5173/` เมื่อเริ่มโหมดเว็บแล้ว หยุด server ด้วย `Ctrl+C`
 
 ## โหมดใน `run.bat`

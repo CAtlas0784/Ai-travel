@@ -1,9 +1,29 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string]$InstallRoot
+  [string]$InstallRoot,
+
+  [Parameter(Mandatory = $true)]
+  [string]$LogPath
 )
 
 $ErrorActionPreference = "Stop"
+$LogPath = [System.IO.Path]::GetFullPath($LogPath)
+
+function Write-SetupMessage {
+  param(
+    [string]$Message,
+    [ConsoleColor]$Color
+  )
+
+  $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+  Add-Content -LiteralPath $LogPath -Value "[$stamp] $Message" -Encoding UTF8
+  if ($PSBoundParameters.ContainsKey("Color")) {
+    Write-Host $Message -ForegroundColor $Color
+  }
+  else {
+    Write-Host $Message
+  }
+}
 
 function Get-UsableNode {
   param([string]$NodeDirectory)
@@ -43,29 +63,33 @@ try {
     $systemNodeDirectory = Split-Path -Parent $systemNode.Source
     $systemToolchain = Get-UsableNode -NodeDirectory $systemNodeDirectory
     if ($systemToolchain) {
-      Write-Host "Found supported Node.js $($systemToolchain.Node) and npm $($systemToolchain.Npm)."
+      Write-SetupMessage "Found supported Node.js $($systemToolchain.Node) and npm $($systemToolchain.Npm)."
       exit 0
     }
+    Write-SetupMessage "The Node.js/npm found on this computer is not Node.js 24.x with npm 11+."
   }
 
   $localToolchain = Get-UsableNode -NodeDirectory $InstallRoot
   if ($localToolchain) {
-    Write-Host "Using project-local Node.js $($localToolchain.Node) and npm $($localToolchain.Npm)."
+    Write-SetupMessage "Using project-local Node.js $($localToolchain.Node) and npm $($localToolchain.Npm)."
     exit 10
   }
+  if (Test-Path -LiteralPath (Join-Path $InstallRoot "node.exe")) {
+    Write-SetupMessage "The project-local Node.js files are incomplete or do not meet the required versions; they will be refreshed if download succeeds."
+  }
 
-  Write-Host "This project needs Node.js 24.x and npm 11 or newer."
-  Write-Host "I can download the official portable Node.js archive (about 40 MB) into:"
-  Write-Host "  $InstallRoot"
-  Write-Host "It will not install system-wide or require administrator access."
+  Write-SetupMessage "This project needs Node.js 24.x and npm 11 or newer."
+  Write-SetupMessage "I can download the official portable Node.js archive (about 40 MB) into:"
+  Write-SetupMessage "  $InstallRoot"
+  Write-SetupMessage "It will not install system-wide or require administrator access."
   $answer = Read-Host "Download Node.js now? [Y/N]"
   if ($answer -notmatch "(?i)^y(es)?$") {
-    Write-Host "Node.js 24.x and npm 11+ are required for local preview, demo, PostgreSQL, and checks."
+    Write-SetupMessage "Node.js 24.x and npm 11+ are required for local preview, demo, PostgreSQL, and checks."
     exit 1
   }
 
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  Write-Host "Looking up the latest Node.js 24 release from nodejs.org..."
+  Write-SetupMessage "Looking up the latest Node.js 24 release from nodejs.org..."
   $releases = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json" -TimeoutSec 30
   $release = $releases | Where-Object { $_.version -match "^v24\." } | Select-Object -First 1
   if (-not $release) { throw "Could not find a Node.js 24 release at nodejs.org." }
@@ -97,7 +121,7 @@ try {
     if (-not $checksumLine) { throw "Could not find the archive checksum in the official SHASUMS256.txt." }
     $expectedHash = ($checksumLine.Trim() -split "\s+")[0]
 
-    Write-Host "Downloading $archiveName from nodejs.org..."
+    Write-SetupMessage "Downloading $archiveName from nodejs.org..."
     Invoke-WebRequest -Uri "$releaseUrl/$archiveName" -OutFile $archivePath -TimeoutSec 180 -UseBasicParsing
     $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
     if ($actualHash -ne $expectedHash) { throw "The Node.js download checksum did not match. The archive will not be installed." }
@@ -120,10 +144,10 @@ try {
 
   $installedToolchain = Get-UsableNode -NodeDirectory $InstallRoot
   if (-not $installedToolchain) { throw "Node.js downloaded, but Node.js 24/npm 11+ verification failed." }
-  Write-Host "Installed portable Node.js $($installedToolchain.Node) and npm $($installedToolchain.Npm)."
+  Write-SetupMessage "Installed portable Node.js $($installedToolchain.Node) and npm $($installedToolchain.Npm)."
   exit 10
 }
 catch {
-  Write-Host "Node.js requirement setup failed: $($_.Exception.Message)" -ForegroundColor Red
+  Write-SetupMessage -Message "Node.js requirement setup failed: $($_.Exception.Message)" -Color Red
   exit 1
 }

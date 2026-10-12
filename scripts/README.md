@@ -6,3 +6,5 @@ Use the root `run.bat` menu as the single entry point. The batch/PowerShell file
 - `build-checks.bat` — unit tests, optional PostgreSQL integration tests, lint, and production builds.
 - `online-smoke-test.ps1` — checks deployed website availability, API/database readiness, sourced place records, and CORS. It does not submit credentials or call AI providers.
 - `ensure-node.ps1` — checks for Node.js 24.x with npm 11+; if missing, offers to download and verify the official portable Node.js archive into the ignored `.tools/` folder.
+
+`run.bat` records Node.js setup and dependency-install output in `.tools/run.log`; this file is ignored by Git and can be shared when diagnosing a failed setup.
