@@ -16,7 +16,13 @@ function Write-SetupMessage {
   )
 
   $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-  Add-Content -LiteralPath $LogPath -Value "[$stamp] $Message" -Encoding UTF8
+  try {
+    Add-Content -LiteralPath $LogPath -Value "[$stamp] $Message" -Encoding UTF8 -ErrorAction Stop
+  }
+  catch {
+    $logError = $_.Exception.Message -replace "[\r\n]+", " "
+    [Console]::Error.WriteLine("Could not append to launcher log '$LogPath': $logError")
+  }
   if ($PSBoundParameters.ContainsKey("Color")) {
     Write-Host $Message -ForegroundColor $Color
   }

@@ -2,6 +2,11 @@
 setlocal EnableExtensions
 set "PROJECT_ROOT=%~dp0"
 cd /d "%PROJECT_ROOT%"
+if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
+set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
+>>"%RUN_LOG%" echo.
+>>"%RUN_LOG%" echo ===== Launcher started %date% %time% =====
+>>"%RUN_LOG%" echo Project: %PROJECT_ROOT%
 
 :menu
 if not defined KEEP_MENU_OUTPUT cls
@@ -114,12 +119,13 @@ goto menu
 if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
 set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
 set "RUN_ERROR_LOG=%PROJECT_ROOT%.tools\run-error.log"
->"%RUN_LOG%" echo AI Travel launcher log - %date% %time%
+>>"%RUN_LOG%" echo [%date% %time%] Checking Node.js and npm requirements.
 >"%RUN_ERROR_LOG%" echo.
 echo Log: %RUN_LOG%
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -LogPath "%RUN_LOG%" 2>>"%RUN_ERROR_LOG%"
 set "NODE_SETUP_RESULT=%ERRORLEVEL%"
 type "%RUN_ERROR_LOG%" >>"%RUN_LOG%"
+>>"%RUN_LOG%" echo [%date% %time%] ensure-node.ps1 exit code: %NODE_SETUP_RESULT%.
 if %NODE_SETUP_RESULT% GEQ 11 goto prerequisitesFailed
 if %NODE_SETUP_RESULT% GEQ 10 goto useLocalNode
 if not "%NODE_SETUP_RESULT%"=="0" goto prerequisitesFailed
@@ -151,6 +157,7 @@ if defined RUN_LOG (
   echo Details saved to "%RUN_LOG%":
   if exist "%RUN_LOG%" type "%RUN_LOG%"
 )
+echo This window will stay open. Press any key to return to the menu.
 pause
 set "KEEP_MENU_OUTPUT=1"
 exit /b 1
