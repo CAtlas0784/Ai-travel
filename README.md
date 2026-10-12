@@ -49,7 +49,8 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 ### สิ่งที่ต้องติดตั้ง
 
 - Windows 10 หรือใหม่กว่า
-- Node.js 24.x และ npm 11.x
+- อินเทอร์เน็ตสำหรับดาวน์โหลด Node.js และ dependencies ครั้งแรก
+- ไม่ต้องติดตั้ง Node.js/npm เอง: `run.bat` จะตรวจ Node.js 24.x และ npm 11+; หากไม่พบ จะถามก่อนดาวน์โหลด Node.js แบบ portable จาก `nodejs.org` (ประมาณ 40 MB) มาเก็บใน `.tools/` ของโปรเจกต์ และตรวจ SHA-256 ก่อนใช้ โดยไม่ติดตั้งทั่วเครื่องหรือขอสิทธิ์แอดมิน
 - PostgreSQL เฉพาะเมื่อเลือกโหมด PostgreSQL
 - API key ของ Gemini หรือ OpenAI เฉพาะเมื่อต้องการคำตอบจาก AI จริง
 
@@ -68,19 +69,19 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
    run.bat
    ```
 
-3. เลือกโหมดจากเมนู หากยังไม่มี `node_modules` สคริปต์จะเรียก `npm install` ให้โดยอัตโนมัติ
+3. เลือกโหมดจากเมนู `run.bat` จะตรวจ Node.js/npm ก่อน และติดตั้ง project dependencies ด้วย `npm install` หากยังไม่มี `node_modules`
 
 เปิดเว็บ local ที่ `http://127.0.0.1:5173/` เมื่อเริ่มโหมดเว็บแล้ว หยุด server ด้วย `Ctrl+C`
 
 ## โหมดใน `run.bat`
 
-| ตัวเลือก | ใช้ทำอะไร | ต้องมีอะไรเพิ่ม |
+| ตัวเลือก | ใช้ทำอะไร | Requirement เพิ่มเติม |
 | --- | --- | --- |
-| `1. Local preview` | เปิดเว็บอย่างเดียว คำตอบแชตเป็นข้อความจำลอง | Node.js และ npm |
-| `2. Local demo` | เปิดเว็บกับ API แบบเก็บข้อมูลในหน่วยความจำ | Node.js และ npm; ไม่ต้องใช้ PostgreSQL หรือ AI key |
-| `3. Local PostgreSQL` | เปิด API จริงและเว็บ พร้อม migrate และ seed ฐานข้อมูล | PostgreSQL และไฟล์ `apps/api/.env` ที่ตั้งค่าถูกต้อง; AI key เป็นตัวเลือก |
-| `4. Local checks` | รัน unit tests, integration tests (ถ้าตั้ง `TEST_DATABASE_URL`), ESLint และ production build ทั้ง API และเว็บ | ติดตั้ง dependencies แล้ว; PostgreSQL สำหรับ integration tests เป็นตัวเลือก |
-| `5. Online smoke check` | ตรวจหน้าเว็บ, API health/database readiness, สถานที่มีแหล่งข้อมูล และ CORS | URL ของเว็บและ API ที่เข้าถึงได้ |
+| `1. Local preview` | เปิดเว็บอย่างเดียว คำตอบแชตเป็นข้อความจำลอง | `run.bat` ตรวจและเตรียม Node.js/npm ให้อัตโนมัติ; ต้องมีอินเทอร์เน็ตสำหรับดาวน์โหลดครั้งแรก |
+| `2. Local demo` | เปิดเว็บกับ API แบบเก็บข้อมูลในหน่วยความจำ | Node.js/npm (เตรียมอัตโนมัติ); ไม่ต้องใช้ PostgreSQL หรือ AI key |
+| `3. Local PostgreSQL` | เปิด API จริงและเว็บ พร้อม migrate และ seed ฐานข้อมูล | ต้องติดตั้งและเปิด PostgreSQL เอง พร้อม `apps/api/.env` ที่ตั้งค่าถูกต้อง; AI key จำเป็นเมื่ออยากได้คำตอบจาก AI จริง |
+| `4. Local checks` | รัน unit tests, integration tests (ถ้าตั้ง `TEST_DATABASE_URL`), ESLint และ production build ทั้ง API และเว็บ | Node.js/npm (เตรียมอัตโนมัติ); PostgreSQL สำหรับ integration tests เป็นตัวเลือก |
+| `5. Online smoke check` | ตรวจหน้าเว็บ, API health/database readiness, สถานที่มีแหล่งข้อมูล และ CORS | PowerShell และอินเทอร์เน็ต; ต้องมี URL ของเว็บและ API ที่เข้าถึงได้; ไม่ต้องใช้ Node.js/npm |
 | `0. Exit` | ปิดเมนู | — |
 
 โหมด preview ใช้ mock ใน frontend โดยตรง ส่วนโหมด demo ใช้ API ที่เก็บข้อมูลชั่วคราว เมื่อปิด process ของ demo ข้อมูลจะหายไป

@@ -15,6 +15,9 @@ echo 4. Local checks (tests + lint + production build)
 echo 5. Online smoke check (website + API health)
 echo 0. Exit
 echo.
+echo Options 1-4 need Node.js 24/npm 11; the launcher offers to download them if missing.
+echo Option 3 also needs PostgreSQL. Option 5 needs internet but no Node.js/npm.
+echo.
 choice /C 123450 /N /M "Choose an option: "
 if errorlevel 6 goto finish
 if errorlevel 5 goto online
@@ -107,14 +110,35 @@ pause
 goto menu
 
 :ensureDependencies
+if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
+del /Q "%PROJECT_ROOT%.tools\node-bin.txt" 2>nul
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -OutputPath "%PROJECT_ROOT%.tools\node-bin.txt"
+if errorlevel 1 goto prerequisitesFailed
+if not exist "%PROJECT_ROOT%.tools\node-bin.txt" goto prerequisitesFailed
+set /p "NODE_BIN="<"%PROJECT_ROOT%.tools\node-bin.txt"
+if /I "%NODE_BIN%"=="LOCAL" (
+  set "PATH=%PROJECT_ROOT%.tools\node24;%PATH%"
+) else if /I not "%NODE_BIN%"=="SYSTEM" (
+  goto prerequisitesFailed
+)
+echo.
+echo Node.js and npm are ready:
+node --version
+npm --version
 if exist "%PROJECT_ROOT%node_modules" exit /b 0
 echo node_modules is missing. Installing project dependencies...
 pushd "%PROJECT_ROOT%"
 call npm install
 set "INSTALL_RESULT=%ERRORLEVEL%"
 popd
-if not "%INSTALL_RESULT%"=="0" exit /b 1
+if not "%INSTALL_RESULT%"=="0" goto prerequisitesFailed
 exit /b 0
+
+:prerequisitesFailed
+echo.
+echo Requirements could not be prepared. Check the message above and try again.
+pause
+exit /b 1
 
 :finish
 endlocal
