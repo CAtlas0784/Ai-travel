@@ -4,7 +4,8 @@ set "PROJECT_ROOT=%~dp0"
 cd /d "%PROJECT_ROOT%"
 
 :menu
-cls
+if not defined KEEP_MENU_OUTPUT cls
+set "KEEP_MENU_OUTPUT="
 echo ==============================================
 echo        Uthai Thani AI Travel Assistant
 echo ==============================================
@@ -138,6 +139,7 @@ exit /b 0
 echo.
 echo Requirements could not be prepared. Check the message above and try again.
 pause
+set "KEEP_MENU_OUTPUT=1"
 exit /b 1
 
 :finish
