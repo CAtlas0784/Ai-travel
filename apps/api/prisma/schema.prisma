@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AiModelPreference {
+  AUTO
+  GEMINI
+  OPENAI
+}
+
+model User {
+  id            String         @id @default(cuid())
+  username      String         @unique
+  email         String         @unique
+  passwordHash  String
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  conversations Conversation[]
+  messages      Message[]
+  favorites     FavoritePlace[]
+  savedPlaces   SavedPlace[]
+  settings      UserSettings?
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  title     String
+  pinned    Boolean   @default(false)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+  @@unique([id, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  role           MessageRole
+  content        String
+  imageUrl       String?
+  conversationId String
+  userId         String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Place {
+  id               String          @id @default(cuid())
+  name             String          @unique
+  slug             String          @unique
+  description      String
+  imageUrl         String
+  rating           Float
+  openHours        String
+  category         String
+  address          String?
+  entranceFee      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  favorites        FavoritePlace[]
+  savedPlaces      SavedPlace[]
+}
+
+model FavoritePlace {
+  userId    String
+  placeId   String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place     Place  @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, placeId])
+}
+
+model SavedPlace {
+  userId    String
+  placeId   String
+  note      String?
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place     Place  @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, placeId])
+}
+
+model UserSettings {
+  userId     String            @id
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme      String            @default("system")
+  language   String            @default("th")
+  aiModel    AiModelPreference @default(AUTO)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}

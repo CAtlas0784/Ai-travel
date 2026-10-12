@@ -1,0 +1,496 @@
+# ROLE
+
+You are a Senior Full Stack Developer, UI/UX Designer, and AI Engineer.
+
+Your job is to build a production-quality web application from scratch.
+
+Do NOT simplify anything.
+Do NOT generate placeholder code unless absolutely necessary.
+Think carefully before generating code.
+
+---
+
+# PROJECT
+
+Project Name
+
+AI แนะนำสถานที่ท่องเที่ยวจังหวัดอุทัยธานี
+(Uthai Thani AI Travel Assistant)
+
+Concept
+
+เว็บไซต์ AI Chatbot สำหรับแนะนำสถานที่ท่องเที่ยวในจังหวัดอุทัยธานี โดยเน้นประสบการณ์ใช้งานแบบ ChatGPT พร้อมข้อมูลสถานที่ท่องเที่ยวที่สวยงาม ใช้งานง่าย และทันสมัย
+
+ต้องการ UI ที่ดู Premium สะอาด และเป็นมืออาชีพ
+
+Reference Design
+
+* ChatGPT
+* Claude
+* Perplexity
+* Vercel AI
+* Linear
+* Apple Design Language
+
+ห้ามใช้ดีไซน์แบบเว็บนักศึกษา
+
+---
+
+# TECH STACK
+
+Frontend
+
+* React
+* TypeScript
+* Vite
+* TailwindCSS
+* shadcn/ui
+* Framer Motion
+* React Router
+
+Backend
+
+* Node.js
+* Express
+* Railway Deployment
+
+Database
+
+* PostgreSQL
+
+ORM
+
+* Prisma
+
+Authentication
+
+* JWT Authentication
+* bcrypt password hashing
+
+AI
+
+Primary
+
+Gemini API
+
+Fallback
+
+OpenAI ChatGPT API
+
+Logic
+
+If Gemini fails
+
+↓
+
+Automatically retry using ChatGPT
+
+↓
+
+Return answer normally
+
+User should never know which AI answered.
+
+---
+
+# WEBSITE STRUCTURE
+
+## Login Page
+
+Need
+
+Modern UI
+
+Glassmorphism
+
+Animated Background
+
+Features
+
+* Login
+* Remember Me
+* Forgot Password
+* Register button
+
+---
+
+## Register Page
+
+Need
+
+* Username
+* Email
+* Password
+* Confirm Password
+
+Validation
+
+* Duplicate Email
+* Duplicate Username
+* Password Strength
+
+---
+
+## Main Layout
+
+Three Column Layout
+
+---
+
+Left Sidebar
+
+Center Chat
+
+Right Sidebar
+
+---
+
+Responsive
+
+Desktop First
+
+Tablet
+
+Mobile
+
+---
+
+# LEFT SIDEBAR
+
+Top
+
+User Profile
+
+Display
+
+* Avatar
+* Username
+* Email
+
+Below
+
+Trending Tourist Attractions
+
+Example
+
+🔥 หุบป่าตาด
+
+🏞 เขาสะแกกรัง
+
+🌄 วัดท่าซุง
+
+🌿 น้ำตกไซเบอร์
+
+Each card
+
+* Beautiful Image
+* Short Description
+* Rating
+* Open Hours
+
+Clicking one
+
+↓
+
+Automatically starts chat
+
+Example
+
+"ช่วยแนะนำสถานที่นี้หน่อย"
+
+---
+
+# CENTER
+
+Main Chat Interface
+
+Like ChatGPT
+
+Features
+
+* Chat History
+* Markdown Support
+* Code Highlight
+* Image Preview
+* Typing Animation
+* Streaming Response
+* Copy Button
+* Regenerate
+* Stop Generating
+
+Input
+
+Large Input Box
+
+Support
+
+Enter
+
+Shift+Enter
+
+Attachment Button (future feature)
+
+---
+
+# AI SYSTEM
+
+Prompt Engineering
+
+System Prompt
+
+You are an expert travel guide specializing in Uthai Thani Province.
+
+You know
+
+* Attractions
+* Cafes
+* Restaurants
+* Hotels
+* Temples
+* Nature
+* Local Food
+* Local Culture
+* Travel Routes
+* Opening Hours
+* Entrance Fees
+
+Always answer in Thai unless the user requests another language.
+
+If the requested information is unknown,
+
+Do NOT hallucinate.
+
+Say clearly that the information is unavailable.
+
+---
+
+# CHAT FEATURES
+
+Need
+
+Conversation History
+
+Rename Chat
+
+Delete Chat
+
+Search Chat
+
+Pinned Chat
+
+Timestamp
+
+---
+
+# RIGHT SIDEBAR
+
+Top
+
+Settings
+
+Need
+
+* Theme
+* Dark Mode
+* Light Mode
+* Language
+* AI Model
+* Profile
+* Logout
+
+Other
+
+About Project
+
+Version
+
+Privacy Policy
+
+Terms
+
+---
+
+# DATABASE
+
+Need
+
+Users
+
+Chat History
+
+Conversation
+
+Messages
+
+Saved Places
+
+Favorite Places
+
+Settings
+
+---
+
+# API
+
+Backend should expose REST APIs
+
+Authentication
+
+Chat
+
+History
+
+User
+
+Trending Places
+
+Settings
+
+Favorites
+
+---
+
+# SECURITY
+
+Need
+
+Helmet
+
+Rate Limit
+
+CORS
+
+JWT
+
+Input Validation
+
+SQL Injection Protection
+
+XSS Protection
+
+Environment Variables
+
+Never expose API Keys.
+
+---
+
+# UI STYLE
+
+Theme
+
+Minimal
+
+Modern
+
+Premium
+
+Rounded Corner
+
+Smooth Animation
+
+Glass Effect
+
+Soft Shadow
+
+Beautiful Gradient
+
+Need to look like a real SaaS product.
+
+---
+
+# COLOR
+
+Primary
+
+#16A34A
+
+Secondary
+
+#22C55E
+
+Background
+
+White
+
+Dark Mode
+
+Near Black
+
+Accent
+
+Nature Green
+
+---
+
+# ANIMATION
+
+Use Framer Motion
+
+Need
+
+Page Transition
+
+Fade
+
+Slide
+
+Loading Skeleton
+
+Hover Animation
+
+Button Ripple
+
+Smooth Sidebar
+
+---
+
+# CODE QUALITY
+
+Use
+
+Reusable Components
+
+Clean Architecture
+
+Folder Separation
+
+Proper Naming
+
+Type Safety
+
+ESLint
+
+Prettier
+
+No duplicated code
+
+---
+
+# OUTPUT REQUIREMENTS
+
+Generate the project step-by-step.
+
+Start with:
+
+1. Folder Structure
+2. Database Schema
+3. Backend Architecture
+4. API Design
+5. Frontend Architecture
+6. Authentication
+7. UI Components
+8. AI Integration
+9. Deployment to Railway
+10. Final Optimization
+
+Never skip any step.
+
+Explain important design decisions before writing code.
+
+Generate complete code for every file.
+
+If the response becomes too long, stop naturally and wait for me to type:
+
+"Continue"
+
+before generating the next part.
