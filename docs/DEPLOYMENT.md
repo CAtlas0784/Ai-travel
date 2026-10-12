@@ -11,7 +11,7 @@
 Run `run.bat` from the project root:
 
 1. **Local preview** runs only the Vite frontend with mock AI responses. No API or database is required.
-2. **Local demo** runs the frontend with the in-memory demo API. Registration, chat, and saved data are temporary and reset when the API process closes.
+2. **Local demo** runs the frontend with the in-memory demo API. Registration and conversations are temporary and reset when the API process closes. Favorite and saved-place endpoints are placeholders in this mode and do not persist data.
 3. **Local PostgreSQL** runs migrations and seed data before starting the API and frontend. On first run, the menu creates `apps/api/.env` from `apps/api/.env.example`; set `DATABASE_URL` and a private `JWT_SECRET`, then choose this option again.
 4. **Local checks** runs `npm run lint` and `npm run build`. These are static/build checks; there is no unit or end-to-end test suite configured yet.
 5. **Online smoke check** asks for the deployed website URL and API base URL, then checks that the website responds, the API `/health` endpoint returns `status: ok`, and the API allows the website origin through CORS. It does not log in, send a chat message, or call Gemini/OpenAI.
