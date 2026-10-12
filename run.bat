@@ -113,12 +113,16 @@ goto menu
 :ensureDependencies
 if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
 set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
+set "RUN_ERROR_LOG=%PROJECT_ROOT%.tools\run-error.log"
 >"%RUN_LOG%" echo AI Travel launcher log - %date% %time%
+>"%RUN_ERROR_LOG%" echo.
 echo Log: %RUN_LOG%
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -LogPath "%RUN_LOG%" 2>>"%RUN_LOG%"
-if errorlevel 11 goto prerequisitesFailed
-if errorlevel 10 goto useLocalNode
-if errorlevel 1 goto prerequisitesFailed
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -LogPath "%RUN_LOG%" 2>>"%RUN_ERROR_LOG%"
+set "NODE_SETUP_RESULT=%ERRORLEVEL%"
+type "%RUN_ERROR_LOG%" >>"%RUN_LOG%"
+if %NODE_SETUP_RESULT% GEQ 11 goto prerequisitesFailed
+if %NODE_SETUP_RESULT% GEQ 10 goto useLocalNode
+if not "%NODE_SETUP_RESULT%"=="0" goto prerequisitesFailed
 goto nodeReady
 
 :useLocalNode
