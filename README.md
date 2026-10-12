@@ -49,8 +49,9 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 ### สิ่งที่ต้องติดตั้ง
 
 - Windows 10 หรือใหม่กว่า
-- อินเทอร์เน็ตสำหรับดาวน์โหลด Node.js และ dependencies ครั้งแรก
-- ไม่ต้องติดตั้ง Node.js/npm เอง: `run.bat` จะตรวจ Node.js 24.x และ npm 11+; หากไม่พบ จะถามก่อนดาวน์โหลด Node.js แบบ portable จาก `nodejs.org` (ประมาณ 40 MB) มาเก็บใน `.tools/` ของโปรเจกต์ และตรวจ SHA-256 ก่อนใช้ โดยไม่ติดตั้งทั่วเครื่องหรือขอสิทธิ์แอดมิน
+- อินเทอร์เน็ตและ Windows Package Manager (`winget`) สำหรับติดตั้ง Node.js เมื่อยังไม่มีหรือเวอร์ชันไม่ตรง
+- `requirements.txt` ระบุ Node.js 24 และ npm 11 ขั้นต่ำ; `run.bat` จะอ่านไฟล์นี้และติดตั้ง Node.js LTS ด้วย `winget` เมื่อจำเป็น (Windows อาจถามสิทธิ์ติดตั้ง)
+- `package-lock.json` ระบุ dependencies ของแอป; `run.bat` ใช้ `npm ci` เมื่อตรวจไม่พบ dependencies ที่ติดตั้งไว้
 - PostgreSQL เฉพาะเมื่อเลือกโหมด PostgreSQL
 - API key ของ Gemini หรือ OpenAI เฉพาะเมื่อต้องการคำตอบจาก AI จริง
 
@@ -69,9 +70,9 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
    run.bat
    ```
 
-3. เลือกโหมดจากเมนู `run.bat` จะตรวจ Node.js/npm ก่อน และติดตั้ง project dependencies ด้วย `npm install` หากยังไม่มี `node_modules`
+3. เลือกโหมดจากเมนู `run.bat` จะอ่าน `requirements.txt` ตรวจ Node.js/npm และติดตั้งเฉพาะส่วนที่ยังขาด
 
-หากตรวจ requirement หรือดาวน์โหลดไม่สำเร็จ ให้ดูข้อความที่หน้าจอค้างไว้และ log ที่ `.tools/run.log` แล้วส่ง log นี้มาเพื่อช่วยวิเคราะห์ได้ ไฟล์ใน `.tools/` จะไม่ถูก commit ขึ้น Git
+ถ้าไม่มี `winget` ให้ติดตั้ง Node.js 24.x จาก [nodejs.org](https://nodejs.org/en/download/) แล้วเปิด `run.bat` ใหม่ หน้าต่างจะแสดง error และรอให้กดปุ่มก่อนกลับเมนู
 
 เปิดเว็บ local ที่ `http://127.0.0.1:5173/` เมื่อเริ่มโหมดเว็บแล้ว หยุด server ด้วย `Ctrl+C`
 
@@ -79,10 +80,10 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 
 | ตัวเลือก | ใช้ทำอะไร | Requirement เพิ่มเติม |
 | --- | --- | --- |
-| `1. Local preview` | เปิดเว็บอย่างเดียว คำตอบแชตเป็นข้อความจำลอง | `run.bat` ตรวจและเตรียม Node.js/npm ให้อัตโนมัติ; ต้องมีอินเทอร์เน็ตสำหรับดาวน์โหลดครั้งแรก |
-| `2. Local demo` | เปิดเว็บกับ API แบบเก็บข้อมูลในหน่วยความจำ | Node.js/npm (เตรียมอัตโนมัติ); ไม่ต้องใช้ PostgreSQL หรือ AI key |
-| `3. Local PostgreSQL` | เปิด API จริงและเว็บ พร้อม migrate และ seed ฐานข้อมูล | ต้องติดตั้งและเปิด PostgreSQL เอง พร้อม `apps/api/.env` ที่ตั้งค่าถูกต้อง; AI key จำเป็นเมื่ออยากได้คำตอบจาก AI จริง |
-| `4. Local checks` | รัน unit tests, integration tests (ถ้าตั้ง `TEST_DATABASE_URL`), ESLint และ production build ทั้ง API และเว็บ | Node.js/npm (เตรียมอัตโนมัติ); PostgreSQL สำหรับ integration tests เป็นตัวเลือก |
+| `1. Local preview` | เปิดเว็บอย่างเดียว คำตอบแชตเป็นข้อความจำลอง | `run.bat` อ่าน `requirements.txt` และติดตั้ง Node.js/npm ที่ขาดด้วย `winget`; ติดตั้ง dependencies จาก lockfile ครั้งแรก |
+| `2. Local demo` | เปิดเว็บกับ API แบบเก็บข้อมูลในหน่วยความจำ | Node.js/npm และ dependencies (ติดตั้งให้อัตโนมัติ); ไม่ต้องใช้ PostgreSQL หรือ AI key |
+| `3. Local PostgreSQL` | เปิด API จริงและเว็บ พร้อม migrate และ seed ฐานข้อมูล | Node.js/npm และ dependencies; ต้องติดตั้งและเปิด PostgreSQL เอง พร้อม `apps/api/.env` ที่ตั้งค่าถูกต้อง; AI key จำเป็นเมื่ออยากได้คำตอบจาก AI จริง |
+| `4. Local checks` | รัน unit tests, integration tests (ถ้าตั้ง `TEST_DATABASE_URL`), ESLint และ production build ทั้ง API และเว็บ | Node.js/npm และ dependencies; PostgreSQL สำหรับ integration tests เป็นตัวเลือก |
 | `5. Online smoke check` | ตรวจหน้าเว็บ, API health/database readiness, สถานที่มีแหล่งข้อมูล และ CORS | PowerShell และอินเทอร์เน็ต; ต้องมี URL ของเว็บและ API ที่เข้าถึงได้; ไม่ต้องใช้ Node.js/npm |
 | `0. Exit` | ปิดเมนู | — |
 
@@ -119,6 +120,7 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 ├── scripts/       # helper scripts ที่เรียกจาก run.bat
 ├── package.json   # npm workspaces และคำสั่งระดับโปรเจกต์
 ├── package-lock.json
+├── requirements.txt # Node.js/npm runtime ที่ run.bat ตรวจ
 └── run.bat        # เมนูเริ่มใช้งานและตรวจระบบบน Windows
 ```
 

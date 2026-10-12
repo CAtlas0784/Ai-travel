@@ -14,6 +14,7 @@
 ├── README.md
 ├── package.json
 ├── package-lock.json
+├── requirements.txt
 ├── run.bat
 ├── apps/
 │   ├── api/
@@ -105,6 +106,7 @@
 | --- | --- |
 | `package.json` | นิยาม npm workspaces, Node/npm version, คำสั่งพัฒนา, lint, build และ database |
 | `package-lock.json` | lock เวอร์ชัน dependencies ของ workspace |
+| `requirements.txt` | ระบุ major version ขั้นต่ำของ Node.js และ npm ที่เมนู Windows ต้องใช้ |
 | `run.bat` | เมนูหลักสำหรับ preview, demo, PostgreSQL, local checks และ online smoke check บน Windows |
 | `.github/workflows/ci.yml` | GitHub Actions ที่รัน migrations, seed, tests, lint และ builds บน PostgreSQL service ทดสอบ |
 | `.gitignore` | กัน `.env`, dependencies, build output, logs และไฟล์ฐานข้อมูล local ออกจาก Git |

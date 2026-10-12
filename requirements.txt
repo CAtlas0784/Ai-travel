@@ -1,0 +1,4 @@
+# Windows launcher runtime requirements.
+# npm project dependencies are locked separately in package-lock.json.
+node-major=24
+npm-major=11

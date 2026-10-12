@@ -2,11 +2,6 @@
 setlocal EnableExtensions
 set "PROJECT_ROOT=%~dp0"
 cd /d "%PROJECT_ROOT%"
-if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
-set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
->>"%RUN_LOG%" echo.
->>"%RUN_LOG%" echo ===== Launcher started %date% %time% =====
->>"%RUN_LOG%" echo Project: %PROJECT_ROOT%
 
 :menu
 if not defined KEEP_MENU_OUTPUT cls
@@ -21,7 +16,7 @@ echo 4. Local checks (tests + lint + production build)
 echo 5. Online smoke check (website + API health)
 echo 0. Exit
 echo.
-echo Options 1-4 need Node.js 24/npm 11; the launcher offers to download them if missing.
+echo Options 1-4 need the tools listed in requirements.txt; missing tools are installed with winget.
 echo Option 3 also needs PostgreSQL. Option 5 needs internet but no Node.js/npm.
 echo.
 choice /C 123450 /N /M "Choose an option: "
@@ -116,48 +111,83 @@ pause
 goto menu
 
 :ensureDependencies
-if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
-set "RUN_LOG=%PROJECT_ROOT%.tools\run.log"
-set "RUN_ERROR_LOG=%PROJECT_ROOT%.tools\run-error.log"
->>"%RUN_LOG%" echo [%date% %time%] Checking Node.js and npm requirements.
->"%RUN_ERROR_LOG%" echo.
-echo Log: %RUN_LOG%
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -LogPath "%RUN_LOG%" 2>>"%RUN_ERROR_LOG%"
-set "NODE_SETUP_RESULT=%ERRORLEVEL%"
-type "%RUN_ERROR_LOG%" >>"%RUN_LOG%"
->>"%RUN_LOG%" echo [%date% %time%] ensure-node.ps1 exit code: %NODE_SETUP_RESULT%.
-if %NODE_SETUP_RESULT% GEQ 11 goto prerequisitesFailed
-if %NODE_SETUP_RESULT% GEQ 10 goto useLocalNode
-if not "%NODE_SETUP_RESULT%"=="0" goto prerequisitesFailed
-goto nodeReady
+set "REQUIREMENTS_FILE=%PROJECT_ROOT%requirements.txt"
+set "REQUIRED_NODE_MAJOR="
+set "REQUIRED_NPM_MAJOR="
+if not exist "%REQUIREMENTS_FILE%" goto requirementsFileMissing
+for /f "usebackq eol=# tokens=1,2 delims==" %%A in ("%REQUIREMENTS_FILE%") do (
+  if /i "%%A"=="node-major" set "REQUIRED_NODE_MAJOR=%%B"
+  if /i "%%A"=="npm-major" set "REQUIRED_NPM_MAJOR=%%B"
+)
+if not defined REQUIRED_NODE_MAJOR goto requirementsFileInvalid
+if not defined REQUIRED_NPM_MAJOR goto requirementsFileInvalid
 
-:useLocalNode
-set "PATH=%PROJECT_ROOT%.tools\node24;%PATH%"
-goto nodeReady
+call :checkRuntimeRequirements
+if errorlevel 1 goto installRuntime
+goto installProjectDependencies
 
-:nodeReady
-echo.
-echo Node.js and npm are ready:
-node --version
-npm --version
-if exist "%PROJECT_ROOT%node_modules" exit /b 0
-echo node_modules is missing. Installing project dependencies...
-pushd "%PROJECT_ROOT%"
-call npm install >>"%RUN_LOG%" 2>&1
-set "INSTALL_RESULT=%ERRORLEVEL%"
-popd
-type "%RUN_LOG%"
-if not "%INSTALL_RESULT%"=="0" goto prerequisitesFailed
+:installRuntime
+where.exe winget >nul 2>&1
+if errorlevel 1 (
+  echo Node.js is missing or does not match requirements.txt, and winget is unavailable.
+  echo Install Node.js %REQUIRED_NODE_MAJOR%.x with npm %REQUIRED_NPM_MAJOR% or newer, then reopen run.bat.
+  echo Download: https://nodejs.org/en/download/
+  goto requirementsFailed
+)
+echo Installing Node.js LTS with winget because the required runtime is missing or outdated...
+winget install --id OpenJS.NodeJS.LTS --exact --accept-source-agreements --accept-package-agreements
+if errorlevel 1 goto runtimeInstallFailed
+set "PATH=%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%LOCALAPPDATA%\Programs\nodejs;%PATH%"
+call :checkRuntimeRequirements
+if errorlevel 1 goto runtimeInstallFailed
+goto installProjectDependencies
+
+:checkRuntimeRequirements
+set "FOUND_NODE_MAJOR="
+set "FOUND_NPM_MAJOR="
+for /f "tokens=1 delims=." %%V in ('node -p "process.versions.node" 2^>nul') do set "FOUND_NODE_MAJOR=%%V"
+for /f "tokens=1 delims=." %%V in ('npm --version 2^>nul') do set "FOUND_NPM_MAJOR=%%V"
+if not defined FOUND_NODE_MAJOR exit /b 1
+if not defined FOUND_NPM_MAJOR exit /b 1
+if not "%FOUND_NODE_MAJOR%"=="%REQUIRED_NODE_MAJOR%" exit /b 1
+if %FOUND_NPM_MAJOR% LSS %REQUIRED_NPM_MAJOR% exit /b 1
+echo Using Node.js %FOUND_NODE_MAJOR% and npm %FOUND_NPM_MAJOR%.
 exit /b 0
 
-:prerequisitesFailed
-echo.
-echo Requirements could not be prepared. Check the message above and try again.
-if defined RUN_LOG (
-  echo Details saved to "%RUN_LOG%":
-  if exist "%RUN_LOG%" type "%RUN_LOG%"
+:installProjectDependencies
+if exist "%PROJECT_ROOT%node_modules\.package-lock.json" exit /b 0
+if not exist "%PROJECT_ROOT%package-lock.json" (
+  echo package-lock.json is missing. Cannot install the project dependencies reliably.
+  goto requirementsFailed
 )
-echo This window will stay open. Press any key to return to the menu.
+echo Project dependencies are missing. Installing them from package-lock.json...
+pushd "%PROJECT_ROOT%"
+call npm ci
+set "INSTALL_RESULT=%ERRORLEVEL%"
+popd
+if not "%INSTALL_RESULT%"=="0" goto npmInstallFailed
+exit /b 0
+
+:requirementsFileMissing
+echo requirements.txt is missing from the project folder.
+goto requirementsFailed
+
+:requirementsFileInvalid
+echo requirements.txt must contain node-major and npm-major values.
+goto requirementsFailed
+
+:runtimeInstallFailed
+echo Could not install a compatible Node.js/npm runtime with winget.
+echo Required: Node.js %REQUIRED_NODE_MAJOR%.x and npm %REQUIRED_NPM_MAJOR% or newer.
+echo Install Node.js manually from https://nodejs.org/en/download/ and reopen run.bat.
+goto requirementsFailed
+
+:npmInstallFailed
+echo npm could not install the project dependencies. Review the error above and retry.
+
+:requirementsFailed
+echo.
+echo Setup could not finish. Press any key to return to the menu.
 pause
 set "KEEP_MENU_OUTPUT=1"
 exit /b 1
