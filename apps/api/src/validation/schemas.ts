@@ -28,7 +28,8 @@ export const loginSchema = z.object({
 export const chatSchema = z.object({
   conversationId: z.string().optional(),
   message: z.string().trim().min(1).max(4000),
-  imageUrl: z.string().url().optional()
+  imageUrl: z.string().url().optional(),
+  regenerate: z.boolean().optional().default(false)
 });
 
 export const conversationCreateSchema = z.object({

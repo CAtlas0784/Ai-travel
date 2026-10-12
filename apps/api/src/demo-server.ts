@@ -3,13 +3,30 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { randomUUID } from "node:crypto";
+import bcrypt from "bcryptjs";
+import { asyncHandler, HttpError } from "./lib/http.js";
+import { errorHandler, notFound } from "./middleware/error.js";
+import {
+  chatSchema,
+  conversationCreateSchema,
+  conversationUpdateSchema,
+  loginSchema,
+  registerSchema,
+  settingsSchema
+} from "./validation/schemas.js";
 
 type User = {
   id: string;
   username: string;
   email: string;
-  password: string;
+  passwordHash: string;
   avatarUrl: string | null;
+};
+
+type DemoSettings = {
+  theme: "system" | "light" | "dark";
+  language: "th" | "en";
+  aiModel: "AUTO" | "GEMINI" | "OPENAI";
 };
 
 type Conversation = {
@@ -37,6 +54,10 @@ const users = new Map<string, User>();
 const tokens = new Map<string, string>();
 const conversations = new Map<string, Conversation>();
 const messages = new Map<string, Message[]>();
+const userSettings = new Map<string, DemoSettings>();
+const userFavorites = new Map<string, Set<string>>();
+const userSavedPlaces = new Map<string, Map<string, string | null>>();
+const defaultSettings: DemoSettings = { theme: "light", language: "th", aiModel: "AUTO" };
 
 const places = [
   {
@@ -86,9 +107,24 @@ function publicUser(user: User) {
 }
 
 function getUser(req: express.Request) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
+  const authorization = req.headers.authorization;
+  if (!authorization?.startsWith("Bearer ")) return undefined;
+  const token = authorization.slice("Bearer ".length);
   const userId = token ? tokens.get(token) : undefined;
   return userId ? users.get(userId) : undefined;
+}
+
+function getOwnedConversation(id: string, userId: string) {
+  const conversation = conversations.get(id);
+  return conversation?.userId === userId ? conversation : undefined;
+}
+
+function getSettings(userId: string) {
+  return userSettings.get(userId) ?? defaultSettings;
+}
+
+function getPlace(id: string) {
+  return places.find((place) => place.id === id);
 }
 
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -118,47 +154,73 @@ app.use(morgan("dev"));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", mode: "demo" }));
 
-app.post("/api/auth/register", (req, res) => {
-  const { username, email, password } = req.body ?? {};
-  if (!username || !email || !password) {
-    res.status(422).json({ message: "Missing register fields" });
-    return;
-  }
-  if ([...users.values()].some((user) => user.email === email)) {
-    res.status(409).json({ message: "Duplicate email" });
-    return;
-  }
-  const user: User = { id: randomUUID(), username, email, password, avatarUrl: null };
-  const token = randomUUID();
-  users.set(user.id, user);
-  tokens.set(token, user.id);
-  res.status(201).json({ token, user: publicUser(user) });
-});
+app.post(
+  "/api/auth/register",
+  asyncHandler(async (req, res) => {
+    const input = registerSchema.parse(req.body);
+    const existing = [...users.values()].find(
+      (user) => user.email === input.email || user.username.toLowerCase() === input.username.toLowerCase()
+    );
+    if (existing?.email === input.email) throw new HttpError(409, "Duplicate email");
+    if (existing?.username.toLowerCase() === input.username.toLowerCase()) throw new HttpError(409, "Duplicate username");
 
-app.post("/api/auth/login", (req, res) => {
-  const { email, password } = req.body ?? {};
-  const user = [...users.values()].find((item) => item.email === email && item.password === password);
-  if (!user) {
-    res.status(401).json({ message: "Invalid email or password" });
-    return;
-  }
-  const token = randomUUID();
-  tokens.set(token, user.id);
-  res.json({ token, user: publicUser(user) });
-});
+    const user: User = {
+      id: randomUUID(),
+      username: input.username,
+      email: input.email,
+      passwordHash: await bcrypt.hash(input.password, 12),
+      avatarUrl: null
+    };
+    const token = randomUUID();
+    users.set(user.id, user);
+    tokens.set(token, user.id);
+    userSettings.set(user.id, { ...defaultSettings });
+    res.status(201).json({ token, user: publicUser(user) });
+  })
+);
+
+app.post(
+  "/api/auth/login",
+  asyncHandler(async (req, res) => {
+    const input = loginSchema.parse(req.body);
+    const user = [...users.values()].find((item) => item.email === input.email);
+    if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
+      throw new HttpError(401, "Invalid email or password");
+    }
+
+    const token = randomUUID();
+    tokens.set(token, user.id);
+    res.json({ token, user: publicUser(user) });
+  })
+);
 
 app.get("/api/auth/me", requireAuth, (_req, res) => {
   res.json({ user: publicUser(res.locals.user) });
 });
 
 app.get("/api/places/trending", (_req, res) => res.json({ places }));
-
-app.get("/api/settings", requireAuth, (_req, res) => {
-  res.json({ settings: { theme: "light", language: "th", aiModel: "AUTO" } });
+app.get("/api/places/:id", (req, res, next) => {
+  const place = getPlace(req.params.id);
+  if (!place) return next(new HttpError(404, "Place not found"));
+  res.json({ place });
 });
 
-app.patch("/api/settings", requireAuth, (req, res) => {
-  res.json({ settings: { theme: "light", language: "th", aiModel: "AUTO", ...req.body } });
+app.get("/api/settings", requireAuth, (req, res) => {
+  const user = res.locals.user as User;
+  res.json({ settings: getSettings(user.id) });
+});
+
+app.patch("/api/settings", requireAuth, (req, res, next) => {
+  const input = settingsSchema.safeParse(req.body);
+  if (!input.success) return next(input.error);
+  const user = res.locals.user as User;
+  const settings = { ...getSettings(user.id), ...input.data };
+  userSettings.set(user.id, settings);
+  res.json({ settings });
+});
+
+app.get("/api/user/profile", requireAuth, (_req, res) => {
+  res.json({ user: publicUser(res.locals.user) });
 });
 
 app.get("/api/conversations", requireAuth, (req, res) => {
@@ -172,12 +234,14 @@ app.get("/api/conversations", requireAuth, (req, res) => {
   res.json({ conversations: items });
 });
 
-app.post("/api/conversations", requireAuth, (req, res) => {
+app.post("/api/conversations", requireAuth, (req, res, next) => {
+  const input = conversationCreateSchema.safeParse(req.body);
+  if (!input.success) return next(input.error);
   const user = res.locals.user as User;
   const now = new Date().toISOString();
   const conversation: Conversation = {
     id: randomUUID(),
-    title: req.body?.title ?? "บทสนทนาใหม่",
+    title: input.data.title,
     pinned: false,
     userId: user.id,
     createdAt: now,
@@ -188,36 +252,44 @@ app.post("/api/conversations", requireAuth, (req, res) => {
   res.status(201).json({ conversation });
 });
 
-app.patch("/api/conversations/:id", requireAuth, (req, res) => {
-  const current = conversations.get(req.params.id);
-  if (!current) {
-    res.status(404).json({ message: "Conversation not found" });
-    return;
-  }
-  const updated = { ...current, ...req.body, updatedAt: new Date().toISOString() };
+app.patch("/api/conversations/:id", requireAuth, (req, res, next) => {
+  const input = conversationUpdateSchema.safeParse(req.body);
+  if (!input.success) return next(input.error);
+  const user = res.locals.user as User;
+  const current = getOwnedConversation(req.params.id, user.id);
+  if (!current) return next(new HttpError(404, "Conversation not found"));
+  const updated = { ...current, ...input.data, updatedAt: new Date().toISOString() };
   conversations.set(updated.id, updated);
   res.json({ conversation: updated });
 });
 
-app.delete("/api/conversations/:id", requireAuth, (req, res) => {
-  conversations.delete(req.params.id);
-  messages.delete(req.params.id);
+app.delete("/api/conversations/:id", requireAuth, (req, res, next) => {
+  const user = res.locals.user as User;
+  const conversation = getOwnedConversation(req.params.id, user.id);
+  if (!conversation) return next(new HttpError(404, "Conversation not found"));
+  conversations.delete(conversation.id);
+  messages.delete(conversation.id);
   res.status(204).send();
 });
 
-app.get("/api/conversations/:id/messages", requireAuth, (req, res) => {
-  res.json({ messages: messages.get(req.params.id) ?? [] });
+app.get("/api/conversations/:id/messages", requireAuth, (req, res, next) => {
+  const user = res.locals.user as User;
+  const conversation = getOwnedConversation(req.params.id, user.id);
+  if (!conversation) return next(new HttpError(404, "Conversation not found"));
+  res.json({ messages: messages.get(conversation.id) ?? [] });
 });
 
-app.post("/api/chat/stream", requireAuth, async (req, res) => {
-  const user = res.locals.user as User;
-  const now = new Date().toISOString();
-  const conversationId = req.body?.conversationId ?? randomUUID();
-  let conversation = conversations.get(conversationId);
+async function createDemoAnswer(user: User, body: unknown) {
+  const input = chatSchema.parse(body);
+  let conversation = input.conversationId ? getOwnedConversation(input.conversationId, user.id) : undefined;
+  if (input.conversationId && !conversation) throw new HttpError(404, "Conversation not found");
+
   if (!conversation) {
+    if (input.regenerate) throw new HttpError(400, "Cannot regenerate without a conversation");
+    const now = new Date().toISOString();
     conversation = {
-      id: conversationId,
-      title: String(req.body?.message ?? "บทสนทนาใหม่").slice(0, 56),
+      id: randomUUID(),
+      title: input.message.slice(0, 56),
       pinned: false,
       userId: user.id,
       createdAt: now,
@@ -227,57 +299,127 @@ app.post("/api/chat/stream", requireAuth, async (req, res) => {
     messages.set(conversation.id, []);
   }
 
-  const userMessage: Message = {
-    id: randomUUID(),
-    role: "USER",
-    content: String(req.body?.message ?? ""),
-    conversationId,
-    userId: user.id,
-    createdAt: now
-  };
-  const answer = makeAnswer(userMessage.content);
+  const conversationMessages = messages.get(conversation.id) ?? [];
+  if (input.regenerate) {
+    const latest = conversationMessages.slice(-2);
+    const unanswered = latest.length === 1 && latest[0]?.role === "USER" && latest[0].content === input.message;
+    const previousAnswer =
+      latest[1]?.role === "USER" && latest[0]?.role === "ASSISTANT" && latest[1].content === input.message;
+    if (!unanswered && !previousAnswer) {
+      throw new HttpError(409, "The latest answer cannot be regenerated");
+    }
+    if (previousAnswer) conversationMessages.pop();
+  } else {
+    conversationMessages.push({
+      id: randomUUID(),
+      role: "USER",
+      content: input.message,
+      imageUrl: input.imageUrl,
+      conversationId: conversation.id,
+      userId: user.id,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  conversation.updatedAt = new Date().toISOString();
+  const answer = makeAnswer(input.message);
   const assistantMessage: Message = {
     id: randomUUID(),
     role: "ASSISTANT",
     content: answer,
-    conversationId,
+    conversationId: conversation.id,
     userId: user.id,
     createdAt: new Date().toISOString()
   };
-  messages.set(conversationId, [...(messages.get(conversationId) ?? []), userMessage, assistantMessage]);
+  conversationMessages.push(assistantMessage);
+  messages.set(conversation.id, conversationMessages);
+  return { conversation, assistantMessage, answer };
+}
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache, no-transform",
-    Connection: "keep-alive"
+app.post(
+  "/api/chat/stream",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = res.locals.user as User;
+    const result = await createDemoAnswer(user, req.body);
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive"
+    });
+    res.write(`event: meta\ndata: ${JSON.stringify({ conversation: result.conversation })}\n\n`);
+    for (const chunk of result.answer.match(/.{1,36}(\s|$)/g) ?? [result.answer]) {
+      res.write(`event: token\ndata: ${JSON.stringify({ token: chunk })}\n\n`);
+      await new Promise((resolve) => setTimeout(resolve, 24));
+    }
+    res.write(`event: done\ndata: ${JSON.stringify({ message: result.assistantMessage })}\n\n`);
+    res.end();
+  })
+);
+
+app.post(
+  "/api/chat",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = res.locals.user as User;
+    const result = await createDemoAnswer(user, req.body);
+    res.json({ conversation: result.conversation, message: result.assistantMessage });
+  })
+);
+
+app.get("/api/favorites", requireAuth, (req, res) => {
+  const user = res.locals.user as User;
+  const favorites = [...(userFavorites.get(user.id) ?? [])].flatMap((placeId) => {
+    const place = getPlace(placeId);
+    return place ? [{ place }] : [];
   });
-  res.write(`event: meta\ndata: ${JSON.stringify({ conversation })}\n\n`);
-  for (const chunk of answer.match(/.{1,36}(\s|$)/g) ?? [answer]) {
-    res.write(`event: token\ndata: ${JSON.stringify({ token: chunk })}\n\n`);
-    await new Promise((resolve) => setTimeout(resolve, 24));
-  }
-  res.write(`event: done\ndata: ${JSON.stringify({ message: assistantMessage })}\n\n`);
-  res.end();
+  res.json({ favorites });
 });
 
-app.post("/api/chat", requireAuth, (req, res) => {
-  const answer = makeAnswer(String(req.body?.message ?? ""));
-  res.json({
-    conversation: { id: req.body?.conversationId ?? randomUUID(), title: "Demo chat", pinned: false },
-    message: { id: randomUUID(), role: "ASSISTANT", content: answer, createdAt: new Date().toISOString() }
+app.post("/api/favorites/:placeId", requireAuth, (req, res, next) => {
+  const place = getPlace(req.params.placeId);
+  if (!place) return next(new HttpError(404, "Place not found"));
+  const user = res.locals.user as User;
+  const favorites = userFavorites.get(user.id) ?? new Set<string>();
+  favorites.add(place.id);
+  userFavorites.set(user.id, favorites);
+  res.status(201).json({ favorite: { place } });
+});
+
+app.delete("/api/favorites/:placeId", requireAuth, (req, res) => {
+  const user = res.locals.user as User;
+  userFavorites.get(user.id)?.delete(req.params.placeId);
+  res.status(204).send();
+});
+
+app.get("/api/saved-places", requireAuth, (req, res) => {
+  const user = res.locals.user as User;
+  const savedPlaces = [...(userSavedPlaces.get(user.id) ?? new Map<string, string | null>())].flatMap(([placeId, note]) => {
+    const place = getPlace(placeId);
+    return place ? [{ place, note }] : [];
   });
+  res.json({ savedPlaces });
 });
 
-app.get("/api/favorites", requireAuth, (_req, res) => res.json({ favorites: [] }));
-app.post("/api/favorites/:placeId", requireAuth, (req, res) => {
-  res.status(201).json({ favorite: { place: places.find((place) => place.id === req.params.placeId) } });
+app.post("/api/saved-places/:placeId", requireAuth, (req, res, next) => {
+  const place = getPlace(req.params.placeId);
+  if (!place) return next(new HttpError(404, "Place not found"));
+  const user = res.locals.user as User;
+  const savedPlaces = userSavedPlaces.get(user.id) ?? new Map<string, string | null>();
+  const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 240) : savedPlaces.get(place.id) ?? null;
+  savedPlaces.set(place.id, note);
+  userSavedPlaces.set(user.id, savedPlaces);
+  res.status(201).json({ savedPlace: { place, note } });
 });
-app.delete("/api/favorites/:placeId", requireAuth, (_req, res) => res.status(204).send());
-app.get("/api/saved-places", requireAuth, (_req, res) => res.json({ savedPlaces: [] }));
-app.post("/api/saved-places/:placeId", requireAuth, (req, res) => {
-  res.status(201).json({ savedPlace: { place: places.find((place) => place.id === req.params.placeId), note: req.body?.note } });
+
+app.delete("/api/saved-places/:placeId", requireAuth, (req, res) => {
+  const user = res.locals.user as User;
+  userSavedPlaces.get(user.id)?.delete(req.params.placeId);
+  res.status(204).send();
 });
-app.delete("/api/saved-places/:placeId", requireAuth, (_req, res) => res.status(204).send());
+
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(port, "127.0.0.1", () => {
   console.log(`Demo API ready on http://127.0.0.1:${port}`);

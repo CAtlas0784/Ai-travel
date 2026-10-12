@@ -49,7 +49,7 @@ export const api = {
 
 export async function streamChat(
   token: string,
-  payload: { conversationId?: string; message: string; imageUrl?: string },
+  payload: { conversationId?: string; message: string; imageUrl?: string; regenerate?: boolean },
   handlers: {
     onMeta: (conversation: Conversation) => void;
     onToken: (token: string) => void;
@@ -73,21 +73,27 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
 
+  const handleEvent = (event: string) => {
+    const eventType = event.match(/^event: (.+)$/m)?.[1];
+    const data = event.match(/^data: (.+)$/m)?.[1];
+    if (!eventType || !data) return;
+    const parsed = JSON.parse(data);
+    if (eventType === "meta") handlers.onMeta(parsed.conversation);
+    if (eventType === "token") handlers.onToken(parsed.token);
+    if (eventType === "done") handlers.onDone(parsed.message);
+    if (eventType === "error") throw new Error(parsed.message ?? "AI response could not be completed");
+  };
+
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
+    const events = buffer.split(/\r?\n\r?\n/);
     buffer = events.pop() ?? "";
 
-    for (const event of events) {
-      const eventType = event.match(/^event: (.+)$/m)?.[1];
-      const data = event.match(/^data: (.+)$/m)?.[1];
-      if (!eventType || !data) continue;
-      const parsed = JSON.parse(data);
-      if (eventType === "meta") handlers.onMeta(parsed.conversation);
-      if (eventType === "token") handlers.onToken(parsed.token);
-      if (eventType === "done") handlers.onDone(parsed.message);
-    }
+    for (const event of events) handleEvent(event);
   }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) handleEvent(buffer);
 }

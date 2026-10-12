@@ -42,6 +42,13 @@ const demoPlaces: Place[] = [
 
 const demoSettings: Settings = { theme: "light", language: "th", aiModel: "AUTO" };
 
+function lastMessageIndex(messages: Message[], role: Message["role"]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === role) return index;
+  }
+  return -1;
+}
+
 export function AppLayout() {
   const { user, token, logout } = useAuth();
   const [places, setPlaces] = useState<Place[]>([]);
@@ -54,11 +61,20 @@ export function AppLayout() {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const activeConversationIdRef = useRef<string | undefined>(undefined);
+  const conversationLoadRef = useRef(0);
+  const demoMessagesRef = useRef(new Map<string, Message[]>());
+  const demoTimeoutRef = useRef<number | undefined>(undefined);
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId),
     [activeConversationId, conversations]
   );
+
+  function activateConversation(id: string | undefined) {
+    activeConversationIdRef.current = id;
+    setActiveConversationId(id);
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -85,25 +101,38 @@ export function AppLayout() {
   async function refreshConversations(nextSearch = search) {
     if (!token) return;
     if (token === DEMO_TOKEN) return;
-    const { conversations } = await api.conversations(token, nextSearch);
-    setConversations(conversations);
+    try {
+      const result = await api.conversations(token, nextSearch);
+      setConversations(result.conversations);
+    } catch (error) {
+      console.error("Unable to load conversations", error);
+    }
   }
 
   async function selectConversation(id: string) {
     if (!token) return;
+    stopGenerating();
+    const requestId = ++conversationLoadRef.current;
+    activateConversation(id);
+    setMessages([]);
+    setLeftOpen(false);
     if (token === DEMO_TOKEN) {
-      setActiveConversationId(id);
-      setLeftOpen(false);
+      setMessages(demoMessagesRef.current.get(id) ?? []);
       return;
     }
-    setActiveConversationId(id);
-    const { messages } = await api.messages(token, id);
-    setMessages(messages);
-    setLeftOpen(false);
+    try {
+      const result = await api.messages(token, id);
+      if (requestId === conversationLoadRef.current) setMessages(result.messages);
+    } catch (error) {
+      if (requestId === conversationLoadRef.current) setMessages([]);
+      console.error("Unable to load conversation messages", error);
+    }
   }
 
   async function newChat() {
     if (!token) return;
+    stopGenerating();
+    conversationLoadRef.current += 1;
     if (token === DEMO_TOKEN) {
       const conversation: Conversation = {
         id: crypto.randomUUID(),
@@ -113,20 +142,39 @@ export function AppLayout() {
         updatedAt: new Date().toISOString()
       };
       setConversations((current) => [conversation, ...current]);
-      setActiveConversationId(conversation.id);
+      demoMessagesRef.current.set(conversation.id, []);
+      activateConversation(conversation.id);
       setMessages([]);
       setLeftOpen(false);
       return;
     }
     const { conversation } = await api.createConversation(token);
     setConversations((current) => [conversation, ...current]);
-    setActiveConversationId(conversation.id);
+    activateConversation(conversation.id);
     setMessages([]);
     setLeftOpen(false);
   }
 
-  async function sendMessage(content: string) {
-    if (!token || !user) return;
+  async function sendMessage(content: string, regenerateAnswer = false) {
+    if (!token || !user || streaming) return;
+    conversationLoadRef.current += 1;
+
+    let responseConversationId = activeConversationIdRef.current;
+    if (token === DEMO_TOKEN && !responseConversationId) {
+      const now = new Date().toISOString();
+      const conversation: Conversation = {
+        id: crypto.randomUUID(),
+        title: content.slice(0, 56),
+        pinned: false,
+        createdAt: now,
+        updatedAt: now
+      };
+      responseConversationId = conversation.id;
+      setConversations((current) => [conversation, ...current]);
+      demoMessagesRef.current.set(conversation.id, []);
+      activateConversation(conversation.id);
+    }
+
     const optimisticUserMessage: Message = {
       id: crypto.randomUUID(),
       role: "USER",
@@ -139,47 +187,88 @@ export function AppLayout() {
       content: "",
       createdAt: new Date().toISOString()
     };
-    setMessages((current) => [...current, optimisticUserMessage, streamingMessage]);
+
+    const addPendingAnswer = (current: Message[]) => {
+      const next = [...current];
+      if (regenerateAnswer) {
+        const latestUserIndex = lastMessageIndex(next, "USER");
+        const latestAssistantIndex = lastMessageIndex(next, "ASSISTANT");
+        if (latestAssistantIndex > latestUserIndex) next.splice(latestAssistantIndex, 1);
+        return [...next, streamingMessage];
+      }
+      return [...next, optimisticUserMessage, streamingMessage];
+    };
+
+    if (token === DEMO_TOKEN && responseConversationId) {
+      const pending = addPendingAnswer(demoMessagesRef.current.get(responseConversationId) ?? []);
+      demoMessagesRef.current.set(responseConversationId, pending);
+      setMessages(pending);
+    } else {
+      setMessages(addPendingAnswer);
+    }
     setStreaming(true);
-    if (token === DEMO_TOKEN) {
-      window.setTimeout(() => {
+
+    if (token === DEMO_TOKEN && responseConversationId) {
+      const conversationId = responseConversationId;
+      demoTimeoutRef.current = window.setTimeout(() => {
         const answer =
           `ได้เลยครับ นี่คือโหมดพรีวิวหน้าเว็บแบบไม่ต่อ API\n\n` +
           `สำหรับคำถาม: **${content}**\n\n` +
           `ถ้าเป็นระบบจริง AI จะตอบเป็นภาษาไทยเกี่ยวกับสถานที่ท่องเที่ยว ร้านอาหาร คาเฟ่ โรงแรม และเส้นทางในจังหวัดอุทัยธานี พร้อมข้อมูลเวลาเปิด ค่าเข้า และคำแนะนำการเดินทาง`;
-        setMessages((current) =>
-          current.map((message) => (message.id === streamingMessage.id ? { ...message, content: answer } : message))
+        const current = demoMessagesRef.current.get(conversationId) ?? [];
+        const updated = current.map((message) =>
+          message.id === streamingMessage.id ? { ...message, content: answer } : message
         );
-        setStreaming(false);
+        demoMessagesRef.current.set(conversationId, updated);
+        setConversations((items) =>
+          items.map((item) => (item.id === conversationId ? { ...item, updatedAt: new Date().toISOString() } : item))
+        );
+        if (activeConversationIdRef.current === conversationId) {
+          setMessages(updated);
+          setStreaming(false);
+        }
+        demoTimeoutRef.current = undefined;
       }, 450);
       return;
     }
+
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
       await streamChat(
         token,
-        { conversationId: activeConversationId, message: content },
+        { conversationId: responseConversationId, message: content, regenerate: regenerateAnswer },
         {
           onMeta(conversation) {
-            setActiveConversationId(conversation.id);
+            if (activeConversationIdRef.current === responseConversationId) {
+              responseConversationId = conversation.id;
+              activateConversation(conversation.id);
+            }
             setConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
           },
           onToken(chunk) {
             setMessages((current) =>
-              current.map((message) => (message.id === streamingMessage.id ? { ...message, content: message.content + chunk } : message))
+              activeConversationIdRef.current === responseConversationId
+                ? current.map((message) =>
+                    message.id === streamingMessage.id ? { ...message, content: message.content + chunk } : message
+                  )
+                : current
             );
           },
           onDone(message) {
-            setMessages((current) => current.map((item) => (item.id === streamingMessage.id ? message : item)));
+            setMessages((current) =>
+              activeConversationIdRef.current === responseConversationId
+                ? current.map((item) => (item.id === streamingMessage.id ? message : item))
+                : current
+            );
             void refreshConversations();
           }
         },
         controller.signal
       );
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && activeConversationIdRef.current === responseConversationId) {
         setMessages((current) =>
           current.map((message) =>
             message.id === streamingMessage.id ? { ...message, content: "ขออภัย ส่งคำถามไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" } : message
@@ -187,19 +276,36 @@ export function AppLayout() {
         );
       }
     } finally {
-      setStreaming(false);
-      abortRef.current = null;
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setStreaming(false);
+      }
     }
   }
 
   function stopGenerating() {
-    abortRef.current?.abort();
+    const interruptedConversationId = activeConversationIdRef.current;
+    const controller = abortRef.current;
+    abortRef.current = null;
+    controller?.abort();
+    if (demoTimeoutRef.current !== undefined) {
+      window.clearTimeout(demoTimeoutRef.current);
+      demoTimeoutRef.current = undefined;
+    }
     setStreaming(false);
+    setMessages((current) => {
+      const updated = current.filter((message) => message.role !== "ASSISTANT" || message.content.length > 0);
+      if (token === DEMO_TOKEN && interruptedConversationId) {
+        demoMessagesRef.current.set(interruptedConversationId, updated);
+      }
+      return updated;
+    });
   }
 
   function regenerate() {
-    const lastUserMessage = [...messages].reverse().find((message) => message.role === "USER");
-    if (lastUserMessage) void sendMessage(lastUserMessage.content);
+    const latestUserIndex = lastMessageIndex(messages, "USER");
+    if (latestUserIndex < 0) return;
+    void sendMessage(messages[latestUserIndex].content, true);
   }
 
   async function updateSettings(payload: Partial<Settings>) {
@@ -241,20 +347,19 @@ export function AppLayout() {
 
   async function deleteConversation(id: string) {
     if (!token) return;
+    if (activeConversationIdRef.current === id) {
+      stopGenerating();
+      conversationLoadRef.current += 1;
+      activateConversation(undefined);
+      setMessages([]);
+    }
     if (token === DEMO_TOKEN) {
       setConversations((current) => current.filter((item) => item.id !== id));
-      if (activeConversationId === id) {
-        setActiveConversationId(undefined);
-        setMessages([]);
-      }
+      demoMessagesRef.current.delete(id);
       return;
     }
     await api.deleteConversation(token, id);
     setConversations((current) => current.filter((item) => item.id !== id));
-    if (activeConversationId === id) {
-      setActiveConversationId(undefined);
-      setMessages([]);
-    }
   }
 
   function askAboutPlace(place: Place) {

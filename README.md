@@ -132,6 +132,7 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 | `JWT_SECRET` | จำเป็น | secret สำหรับเซ็น JWT; โค้ดกำหนดขั้นต่ำ 24 ตัวอักษร และแนะนำให้ใช้ secret สุ่มอย่างน้อย 32 ตัวอักษร |
 | `GEMINI_API_KEY` | ไม่จำเป็น | ใส่เพื่อใช้ Gemini |
 | `OPENAI_API_KEY` | ไม่จำเป็น | ใส่เพื่อใช้ OpenAI หรือ fallback |
+| `OPENAI_MODEL` | ไม่จำเป็น | OpenAI model ID; ค่าเริ่มต้น `gpt-5.6-luna` |
 | `RATE_LIMIT_WINDOW_MS` | ไม่จำเป็น | ช่วงเวลา rate limit; ค่าเริ่มต้น 900000 ms |
 | `RATE_LIMIT_MAX` | ไม่จำเป็น | จำนวน request ต่อช่วงเวลา; ค่าเริ่มต้น 120 |
 
@@ -174,6 +175,7 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 
 - เมื่อเลือก `AUTO` ระบบเรียก Gemini ก่อน แล้วลอง OpenAI หาก provider แรกผิดพลาด
 - เมื่อเลือก provider เฉพาะ ระบบเรียก provider นั้นก่อนและลองอีก provider เป็น fallback
+- OpenAI ใช้ model ID จาก `OPENAI_MODEL` ซึ่งมีค่าเริ่มต้นเป็น `gpt-5.6-luna`
 - system prompt ตั้งใจให้ตอบเรื่องจังหวัดอุทัยธานีเป็นภาษาไทย และกำชับไม่ให้แต่งข้อมูลที่ไม่ทราบ
 - หากไม่มี provider key หรือทุก provider ผิดพลาด API จะตอบข้อความแจ้งว่า AI ไม่พร้อมใช้งาน
 
@@ -212,10 +214,9 @@ Prisma schema อยู่ที่ `apps/api/prisma/schema.prisma` และ mi
 
 ## ข้อจำกัดและสิ่งที่ควรทราบ
 
-- `apps/api/src/demo-server.ts` ใช้ข้อมูลชั่วคราวเพื่อพัฒนาเท่านั้น ห้าม deploy แทน API หลัก; endpoint favorites/saved ใน demo ยังเป็น placeholder และไม่ได้เก็บสถานะจริง
+- `apps/api/src/demo-server.ts` ใช้ข้อมูลชั่วคราวเพื่อพัฒนาเท่านั้น ห้าม deploy แทน API หลัก; ข้อมูลทุกอย่างหายเมื่อปิด process
 - Preview และ demo ไม่ใช่การทดสอบ provider AI หรือ persistence จริง
-- OpenAI model ID ใน AI service ควรตรวจและปรับก่อนเปิด fallback ใช้งานจริง; โค้ดปัจจุบันใช้ค่า `GPT-5 nano` ขณะที่เอกสาร API ใช้รูปแบบ ID `gpt-5-nano` ซึ่งถูกทำเครื่องหมาย deprecated แล้ว [รายละเอียดโมเดล](https://developers.openai.com/api/docs/models/gpt-5-nano)
-- ข้อความที่ส่งให้ AI มีการจำกัดจำนวน แต่การเรียงประวัติใน API ปัจจุบันอาจทำให้บทสนทนายาวไม่ส่งข้อความล่าสุดเข้า context
+- API ส่งบริบทล่าสุดให้ AI ไม่เกิน 12 ข้อความ; บทสนทนาที่ยาวกว่านั้นจะไม่ถูกส่งทั้งหมด
 - ปุ่ม forgot password, profile, privacy, terms และแนบไฟล์ยังไม่เชื่อมกับ flow ที่สมบูรณ์
 - ภาพประกอบใน `assets/` เป็นไฟล์ BMP ขนาดใหญ่ หากไม่จำเป็นต้องเก็บต้นฉบับใน Git ให้พิจารณาบีบอัดหรือใช้ Git LFS
 

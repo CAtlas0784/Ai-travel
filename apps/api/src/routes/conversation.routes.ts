@@ -38,8 +38,12 @@ conversationRouter.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     const input = conversationUpdateSchema.parse(req.body);
+    const current = await prisma.conversation.findFirst({
+      where: { id: req.params.id, userId: req.user!.id }
+    });
+    if (!current) throw new HttpError(404, "Conversation not found");
     const conversation = await prisma.conversation.update({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: current.id },
       data: input
     });
     res.json({ conversation });
@@ -49,7 +53,12 @@ conversationRouter.patch(
 conversationRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
-    await prisma.conversation.delete({ where: { id: req.params.id, userId: req.user!.id } });
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+      select: { id: true }
+    });
+    if (!conversation) throw new HttpError(404, "Conversation not found");
+    await prisma.conversation.delete({ where: { id: conversation.id } });
     res.status(204).send();
   })
 );
