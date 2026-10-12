@@ -1,9 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string]$InstallRoot,
-
-  [Parameter(Mandatory = $true)]
-  [string]$OutputPath
+  [string]$InstallRoot
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,24 +35,14 @@ function Get-UsableNode {
   }
 }
 
-function Save-SelectedNodePath {
-  param([string]$Mode)
-
-  $outputDirectory = Split-Path -Parent $OutputPath
-  New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
-  Set-Content -LiteralPath $OutputPath -Value $Mode -Encoding ASCII
-}
-
 try {
   $InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
-  $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 
   $systemNode = Get-Command "node.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($systemNode) {
     $systemNodeDirectory = Split-Path -Parent $systemNode.Source
     $systemToolchain = Get-UsableNode -NodeDirectory $systemNodeDirectory
     if ($systemToolchain) {
-      Save-SelectedNodePath -Mode "SYSTEM"
       Write-Host "Found supported Node.js $($systemToolchain.Node) and npm $($systemToolchain.Npm)."
       exit 0
     }
@@ -63,9 +50,8 @@ try {
 
   $localToolchain = Get-UsableNode -NodeDirectory $InstallRoot
   if ($localToolchain) {
-    Save-SelectedNodePath -Mode "LOCAL"
     Write-Host "Using project-local Node.js $($localToolchain.Node) and npm $($localToolchain.Npm)."
-    exit 0
+    exit 10
   }
 
   Write-Host "This project needs Node.js 24.x and npm 11 or newer."
@@ -134,9 +120,8 @@ try {
 
   $installedToolchain = Get-UsableNode -NodeDirectory $InstallRoot
   if (-not $installedToolchain) { throw "Node.js downloaded, but Node.js 24/npm 11+ verification failed." }
-  Save-SelectedNodePath -Mode "LOCAL"
   Write-Host "Installed portable Node.js $($installedToolchain.Node) and npm $($installedToolchain.Npm)."
-  exit 0
+  exit 10
 }
 catch {
   Write-Host "Node.js requirement setup failed: $($_.Exception.Message)" -ForegroundColor Red

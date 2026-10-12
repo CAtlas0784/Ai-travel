@@ -110,17 +110,17 @@ pause
 goto menu
 
 :ensureDependencies
-if not exist "%PROJECT_ROOT%.tools" mkdir "%PROJECT_ROOT%.tools"
-del /Q "%PROJECT_ROOT%.tools\node-bin.txt" 2>nul
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24" -OutputPath "%PROJECT_ROOT%.tools\node-bin.txt"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\ensure-node.ps1" -InstallRoot "%PROJECT_ROOT%.tools\node24"
+if errorlevel 11 goto prerequisitesFailed
+if errorlevel 10 goto useLocalNode
 if errorlevel 1 goto prerequisitesFailed
-if not exist "%PROJECT_ROOT%.tools\node-bin.txt" goto prerequisitesFailed
-set /p "NODE_BIN="<"%PROJECT_ROOT%.tools\node-bin.txt"
-if /I "%NODE_BIN%"=="LOCAL" (
-  set "PATH=%PROJECT_ROOT%.tools\node24;%PATH%"
-) else if /I not "%NODE_BIN%"=="SYSTEM" (
-  goto prerequisitesFailed
-)
+goto nodeReady
+
+:useLocalNode
+set "PATH=%PROJECT_ROOT%.tools\node24;%PATH%"
+goto nodeReady
+
+:nodeReady
 echo.
 echo Node.js and npm are ready:
 node --version
