@@ -1,8 +1,10 @@
+import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { AppLayout } from "./screens/app-layout";
-import { LoginPage } from "./screens/login-page";
-import { RegisterPage } from "./screens/register-page";
 import { useAuth } from "./providers/auth-provider";
+
+const AppLayout = lazy(() => import("./screens/app-layout").then((module) => ({ default: module.AppLayout })));
+const LoginPage = lazy(() => import("./screens/login-page").then((module) => ({ default: module.LoginPage })));
+const RegisterPage = lazy(() => import("./screens/register-page").then((module) => ({ default: module.RegisterPage })));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();

@@ -26,10 +26,14 @@ export type Place = {
   id: string;
   name: string;
   description: string;
-  imageUrl: string;
-  rating: number;
-  openHours: string;
+  imageUrl: string | null;
+  rating: number | null;
+  openHours: string | null;
   category: string;
+  address: string | null;
+  entranceFee: string | null;
+  sourceUrl: string | null;
+  verifiedAt: string | null;
 };
 
 export type Settings = {

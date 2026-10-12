@@ -1,6 +1,4 @@
 import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export function MarkdownMessage({ content }: { content: string }) {
   return (
@@ -10,9 +8,9 @@ export function MarkdownMessage({ content }: { content: string }) {
           code({ className, children }) {
             const match = /language-(\w+)/.exec(className ?? "");
             return match ? (
-              <SyntaxHighlighter PreTag="div" language={match[1]} style={oneLight} customStyle={{ borderRadius: 10, fontSize: 12 }}>
-                {String(children).replace(/\n$/, "")}
-              </SyntaxHighlighter>
+              <pre className="my-3 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
+                <code className={className}>{String(children).replace(/\n$/, "")}</code>
+              </pre>
             ) : (
               <code>{children}</code>
             );

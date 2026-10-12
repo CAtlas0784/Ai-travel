@@ -6,7 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
-  JWT_SECRET: z.string().min(24),
+  JWT_SECRET: z.string().min(32),
   GEMINI_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6-luna"),

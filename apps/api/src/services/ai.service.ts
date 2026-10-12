@@ -1,9 +1,8 @@
 import { env } from "../config/env.js";
 
 const SYSTEM_PROMPT = `You are an expert travel guide specializing in Uthai Thani Province.
-You know attractions, cafes, restaurants, hotels, temples, nature, local food, local culture, travel routes, opening hours, and entrance fees.
 Always answer in Thai unless the user requests another language.
-If the requested information is unknown, do not hallucinate. Say clearly that the information is unavailable.`;
+Do not invent current travel information. If the verified records do not contain the requested detail, say that the information is unavailable and recommend confirming it with the official venue.`;
 
 type AiMessage = {
   role: "user" | "assistant" | "system";
@@ -11,6 +10,10 @@ type AiMessage = {
 };
 
 type TokenHandler = (token: string) => void;
+
+function systemMessage(travelContext?: string) {
+  return [SYSTEM_PROMPT, travelContext].filter(Boolean).join("\n\n");
+}
 
 function requestSignal(signal?: AbortSignal) {
   const timeout = AbortSignal.timeout(45_000);
@@ -64,7 +67,7 @@ function getRequestMessages(messages: AiMessage[]) {
   return messages.filter((message) => message.role !== "system");
 }
 
-async function askGemini(messages: AiMessage[], signal?: AbortSignal, onToken?: TokenHandler) {
+async function askGemini(messages: AiMessage[], signal?: AbortSignal, onToken?: TokenHandler, travelContext?: string) {
   if (!env.GEMINI_API_KEY) throw new Error("Gemini API key is not configured");
 
   const streaming = Boolean(onToken);
@@ -76,7 +79,7 @@ async function askGemini(messages: AiMessage[], signal?: AbortSignal, onToken?: 
       headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
       signal: requestSignal(signal),
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: systemMessage(travelContext) }] },
         contents: getRequestMessages(messages).map((message) => ({
           role: message.role === "assistant" ? "model" : "user",
           parts: [{ text: message.content }]
@@ -113,7 +116,7 @@ async function askGemini(messages: AiMessage[], signal?: AbortSignal, onToken?: 
   return text;
 }
 
-async function askOpenAi(messages: AiMessage[], signal?: AbortSignal, onToken?: TokenHandler) {
+async function askOpenAi(messages: AiMessage[], signal?: AbortSignal, onToken?: TokenHandler, travelContext?: string) {
   if (!env.OPENAI_API_KEY) throw new Error("OpenAI API key is not configured");
 
   const streaming = Boolean(onToken);
@@ -129,7 +132,7 @@ async function askOpenAi(messages: AiMessage[], signal?: AbortSignal, onToken?: 
       reasoning_effort: "none",
       temperature: 0.7,
       stream: streaming,
-      messages: [{ role: "developer", content: SYSTEM_PROMPT }, ...getRequestMessages(messages)]
+      messages: [{ role: "developer", content: systemMessage(travelContext) }, ...getRequestMessages(messages)]
     })
   });
 
@@ -163,7 +166,8 @@ export async function answerTravelQuestion(
   messages: AiMessage[],
   preference: "AUTO" | "GEMINI" | "OPENAI" = "AUTO",
   signal?: AbortSignal,
-  onToken?: TokenHandler
+  onToken?: TokenHandler,
+  travelContext?: string
 ) {
   const providers =
     preference === "OPENAI"
@@ -181,7 +185,7 @@ export async function answerTravelQuestion(
             emittedTokenCount += 1;
             onToken(token);
           }
-        : undefined);
+        : undefined, travelContext);
     } catch (error) {
       if (signal?.aborted || emittedTokenCount > 0) throw error;
       lastError = error;

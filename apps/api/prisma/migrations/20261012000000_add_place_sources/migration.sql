@@ -1,0 +1,6 @@
+ALTER TABLE "Place"
+  ALTER COLUMN "imageUrl" DROP NOT NULL,
+  ALTER COLUMN "rating" DROP NOT NULL,
+  ALTER COLUMN "openHours" DROP NOT NULL,
+  ADD COLUMN "sourceUrl" TEXT,
+  ADD COLUMN "verifiedAt" DATE;

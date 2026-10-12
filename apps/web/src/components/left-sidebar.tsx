@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Edit3, Flame, Mail, Pin, Search, Star } from "lucide-react";
+import { Edit3, ExternalLink, Flame, Mail, MapPin, Pin, Search, Star } from "lucide-react";
 import type { Conversation, Place, User } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -54,26 +54,49 @@ export function LeftSidebar({
       <div className="mt-4 min-h-0 shrink-[2] space-y-2 overflow-y-auto pr-1">
         <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
           <Flame size={15} className="text-gold" />
-          Trending Tourist Attractions
+          Verified Tourist Places
         </div>
         <div className="grid gap-2">
           {places.map((place) => (
-            <motion.button
+            <motion.div
               whileHover={{ y: -2 }}
               key={place.id}
-              onClick={() => onPlaceClick(place)}
               className="overflow-hidden rounded-xl border border-white/70 bg-white/75 text-left shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5"
             >
-              <img src={place.imageUrl} alt={place.name} className="h-24 w-full object-cover" />
-              <div className="p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-bold">{place.name}</p>
-                  <span className="flex items-center gap-1 text-xs text-gold"><Star size={13} fill="currentColor" />{place.rating}</span>
+              <button type="button" onClick={() => onPlaceClick(place)} className="w-full text-left">
+                {place.imageUrl ? (
+                  <img src={place.imageUrl} alt={place.name} className="h-24 w-full object-cover" />
+                ) : (
+                  <div className="grid h-16 place-items-center bg-primary/10 text-xs text-primary dark:bg-white/10 dark:text-slate-200">
+                    <span className="flex items-center gap-2"><MapPin size={15} /> ยังไม่มีภาพที่ยืนยันสถานที่นี้</span>
+                  </div>
+                )}
+                <div className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-bold">{place.name}</p>
+                    {place.rating !== null && (
+                      <span className="flex items-center gap-1 text-xs text-gold"><Star size={13} fill="currentColor" />{place.rating}</span>
+                    )}
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300">{place.description}</p>
+                  <p className="mt-2 text-xs font-semibold text-primary">
+                    {place.openHours ?? "เวลาเปิด: ยังไม่มีข้อมูลยืนยัน"}
+                  </p>
+                  {place.entranceFee && <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{place.entranceFee}</p>}
                 </div>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300">{place.description}</p>
-                <p className="mt-2 text-xs font-semibold text-primary">{place.openHours}</p>
-              </div>
-            </motion.button>
+              </button>
+              {place.sourceUrl && (
+                <a
+                  href={place.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 border-t border-slate-200/70 px-3 py-2 text-xs text-primary hover:underline dark:border-white/10"
+                >
+                  <ExternalLink size={12} />
+                  แหล่งข้อมูล · ตรวจเมื่อ {place.verifiedAt ? new Date(place.verifiedAt).toLocaleDateString("th-TH") : "ไม่ระบุ"}
+                </a>
+              )}
+            </motion.div>
           ))}
         </div>
       </div>

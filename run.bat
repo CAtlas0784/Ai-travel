@@ -11,7 +11,7 @@ echo ==============================================
 echo 1. Local preview (web only, mock AI)
 echo 2. Local demo (web + in-memory API)
 echo 3. Local PostgreSQL (web + real API)
-echo 4. Local checks (lint + production build)
+echo 4. Local checks (tests + lint + production build)
 echo 5. Online smoke check (website + API health)
 echo 0. Exit
 echo.

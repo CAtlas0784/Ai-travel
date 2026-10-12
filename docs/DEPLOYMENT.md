@@ -13,8 +13,8 @@ Run `run.bat` from the project root:
 1. **Local preview** runs only the Vite frontend with mock AI responses. No API or database is required.
 2. **Local demo** runs the frontend with the in-memory demo API. Registration, conversations, settings, favorites, and saved places are temporary and reset when the API process closes.
 3. **Local PostgreSQL** runs migrations and seed data before starting the API and frontend. On first run, the menu creates `apps/api/.env` from `apps/api/.env.example`; set `DATABASE_URL` and a private `JWT_SECRET`, then choose this option again.
-4. **Local checks** runs `npm run lint` and `npm run build`. These are static/build checks; there is no unit or end-to-end test suite configured yet.
-5. **Online smoke check** asks for the deployed website URL and API base URL, then checks that the website responds, the API `/health` endpoint returns `status: ok`, and the API allows the website origin through CORS. It does not log in, send a chat message, or call Gemini/OpenAI.
+4. **Local checks** runs API unit tests, PostgreSQL integration tests when `TEST_DATABASE_URL` is set, lint, and production builds. Integration tests use a disposable test database.
+5. **Online smoke check** asks for the deployed website URL and API base URL, then checks website availability, API and database readiness at `/health`, sourced place records, and CORS. It does not log in, send a chat message, or call Gemini/OpenAI.
 
 The local demo is for development only. Do not deploy `apps/api/src/demo-server.ts`; it intentionally uses temporary demo behavior instead of PostgreSQL-backed security and persistence.
 
@@ -52,7 +52,7 @@ RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=120
 ```
 
-The Railway configuration uses `npm install && npm run build` and `npm run db:deploy && npm start`. After deploy, open the generated API URL plus `/health`; a healthy response is `{ "status": "ok" }`.
+The Railway configuration uses `npm install && npm run build` and `npm run db:deploy && npm run db:seed && npm start`. After deploy, open the generated API URL plus `/health`; a healthy response is `{ "status": "ok", "database": "ok" }`. `/health/live` checks only that the API process responds.
 
 ## Deploy the frontend to Vercel
 
@@ -75,4 +75,4 @@ After both services are online, use a browser to:
 - Change theme and language settings
 - Save or favorite a place if those controls are available in the current UI
 
-The automated online smoke check verifies availability and CORS only; it does not replace these browser checks.
+The automated online smoke check verifies availability, database readiness, sourced place records, and CORS; it does not replace these browser checks.

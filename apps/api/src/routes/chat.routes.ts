@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler, HttpError } from "../lib/http.js";
 import { chatSchema } from "../validation/schemas.js";
 import { answerTravelQuestion } from "../services/ai.service.js";
+import { buildTravelContext } from "../services/travel-context.js";
 
 export const chatRouter = Router();
 chatRouter.use(requireAuth);
@@ -75,6 +76,8 @@ async function createAnswer(
   });
   const history = recentHistory.reverse();
   const settings = await prisma.userSettings.findUnique({ where: { userId } });
+  const places = await prisma.place.findMany({ orderBy: { name: "asc" }, take: 40 });
+  const travelContext = buildTravelContext(input.message, places);
   onConversation?.(conversation);
   const answer = await answerTravelQuestion(
     history.map((message: { role: string; content: string }) => ({
@@ -83,7 +86,8 @@ async function createAnswer(
     })),
     settings?.aiModel ?? "AUTO",
     signal,
-    onToken
+    onToken,
+    travelContext
   );
 
   const assistantMessage = await prisma.message.create({

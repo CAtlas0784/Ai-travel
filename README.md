@@ -2,7 +2,7 @@
 
 เว็บแชตผู้ช่วยวางแผนเที่ยวจังหวัดอุทัยธานี พัฒนาด้วย React และ TypeScript มี Express API, PostgreSQL และ Prisma สำหรับโหมดใช้งานจริง พร้อมโหมดตัวอย่างที่เปิดดูหน้าเว็บหรือทดลอง flow ได้โดยไม่ต้องต่อฐานข้อมูล
 
-> **สถานะโปรเจกต์:** ต้นแบบที่พัฒนาต่อได้ ยังไม่มี automated unit test หรือ end-to-end test และข้อมูลสถานที่ยังเป็นชุดตัวอย่าง
+> **สถานะโปรเจกต์:** ต้นแบบที่พัฒนาต่อได้ มี unit/integration tests และ CI; รายการสถานที่เป็นข้อมูลเริ่มต้นที่ระบุแหล่งอ้างอิงและวันที่ตรวจสอบ แต่ยังไม่ใช่ฐานข้อมูลท่องเที่ยวที่ครอบคลุมทุกแห่ง
 
 Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · Branch ที่ใช้งาน: `dev-test`
 
@@ -79,8 +79,8 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 | `1. Local preview` | เปิดเว็บอย่างเดียว คำตอบแชตเป็นข้อความจำลอง | Node.js และ npm |
 | `2. Local demo` | เปิดเว็บกับ API แบบเก็บข้อมูลในหน่วยความจำ | Node.js และ npm; ไม่ต้องใช้ PostgreSQL หรือ AI key |
 | `3. Local PostgreSQL` | เปิด API จริงและเว็บ พร้อม migrate และ seed ฐานข้อมูล | PostgreSQL และไฟล์ `apps/api/.env` ที่ตั้งค่าถูกต้อง; AI key เป็นตัวเลือก |
-| `4. Local checks` | รัน ESLint และ production build ทั้ง API และเว็บ | ติดตั้ง dependencies แล้ว |
-| `5. Online smoke check` | ตรวจหน้าเว็บที่ deploy, API `/health` และ CORS | URL ของเว็บและ API ที่เข้าถึงได้ |
+| `4. Local checks` | รัน unit tests, integration tests (ถ้าตั้ง `TEST_DATABASE_URL`), ESLint และ production build ทั้ง API และเว็บ | ติดตั้ง dependencies แล้ว; PostgreSQL สำหรับ integration tests เป็นตัวเลือก |
+| `5. Online smoke check` | ตรวจหน้าเว็บ, API health/database readiness, สถานที่มีแหล่งข้อมูล และ CORS | URL ของเว็บและ API ที่เข้าถึงได้ |
 | `0. Exit` | ปิดเมนู | — |
 
 โหมด preview ใช้ mock ใน frontend โดยตรง ส่วนโหมด demo ใช้ API ที่เก็บข้อมูลชั่วคราว เมื่อปิด process ของ demo ข้อมูลจะหายไป
@@ -96,6 +96,9 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 | `npm run dev:demo` | เปิด API demo ในหน่วยความจำและ frontend พร้อมกัน |
 | `npm run lint` | รัน ESLint ใน API และ frontend |
 | `npm run build` | สร้าง Prisma Client, ตรวจ TypeScript และ build frontend/API |
+| `npm test` | รัน unit tests ของ API โดยไม่ต้องใช้ PostgreSQL |
+| `npm run test:integration` | รัน API integration tests ด้วย PostgreSQL ทดสอบแยก; ข้ามชุดทดสอบเมื่อไม่ตั้ง `TEST_DATABASE_URL` |
+| `npm run db:generate` | สร้าง Prisma Client ด้วยตนเองหลังติดตั้ง dependencies หากจำเป็น |
 | `npm run db:migrate` | ใช้ Prisma Migrate สำหรับฐานข้อมูล local/development |
 | `npm run db:seed` | เพิ่มข้อมูลสถานที่ตัวอย่างลงฐานข้อมูล |
 
@@ -153,7 +156,8 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 
 | Method | Path | การใช้งาน |
 | --- | --- | --- |
-| `GET` | `/health` | ตรวจว่า API process ตอบสนอง |
+| `GET` | `/health/live` | ตรวจว่า API process ตอบสนอง |
+| `GET` | `/health` | ตรวจ API และการเชื่อมต่อ PostgreSQL |
 | `POST` | `/api/auth/register` | สมัครบัญชี |
 | `POST` | `/api/auth/login` | เข้าสู่ระบบ |
 | `GET` | `/api/auth/me` | อ่านผู้ใช้จาก access token |
@@ -176,10 +180,11 @@ Repository: [CAtlas0784/Ai-travel](https://github.com/CAtlas0784/Ai-travel) · B
 - เมื่อเลือก `AUTO` ระบบเรียก Gemini ก่อน แล้วลอง OpenAI หาก provider แรกผิดพลาด
 - เมื่อเลือก provider เฉพาะ ระบบเรียก provider นั้นก่อนและลองอีก provider เป็น fallback
 - OpenAI ใช้ model ID จาก `OPENAI_MODEL` ซึ่งมีค่าเริ่มต้นเป็น `gpt-5.6-luna`
-- system prompt ตั้งใจให้ตอบเรื่องจังหวัดอุทัยธานีเป็นภาษาไทย และกำชับไม่ให้แต่งข้อมูลที่ไม่ทราบ
+- API ส่งข้อมูลสถานที่ที่ตรงกับคำถาม พร้อม URL ต้นทางและวันที่ตรวจสอบ ให้ AI ใช้เป็นบริบท
+- AI ถูกกำชับไม่ให้เดาเวลาเปิด ค่าเข้า คะแนน หรือที่อยู่ที่ไม่มีในข้อมูล และให้ผู้ใช้ตรวจสอบกับสถานที่ก่อนเดินทาง
 - หากไม่มี provider key หรือทุก provider ผิดพลาด API จะตอบข้อความแจ้งว่า AI ไม่พร้อมใช้งาน
 
-prompt เพียงอย่างเดียวไม่ใช่แหล่งข้อมูลยืนยันข้อเท็จจริง สถานที่ เวลาเปิด ค่าเข้า และข้อมูลเดินทางยังต้องตรวจสอบกับแหล่งข้อมูลจริง
+ข้อมูลสถานที่ชุดเริ่มต้นใส่ URL แหล่งข้อมูลและวันที่ตรวจสอบไว้ในฐานข้อมูล ช่องที่ไม่มีแหล่งยืนยันจะเป็นค่าว่าง; การแสดงแหล่งอ้างอิงไม่ได้รับประกันว่าเวลาเปิดหรือเงื่อนไขหน้างานจะไม่เปลี่ยน
 
 ## ฐานข้อมูล
 
@@ -195,11 +200,10 @@ Prisma schema อยู่ที่ `apps/api/prisma/schema.prisma` และ mi
 
 ## ตรวจสอบและทดสอบ
 
-- เมนู `4` รัน ESLint และ production build ซึ่งตรวจ lint, TypeScript และ Prisma generation
-- โปรเจกต์ยังไม่มี unit test หรือ end-to-end test suite
-- เมนู `5` ตรวจเพียงการตอบสนองของหน้าเว็บ, สถานะ API `/health` และ CORS ระหว่าง origin ของเว็บกับ API
-- `/health` ยืนยันว่า API process ตอบ HTTP ได้ แต่ไม่ได้ตรวจการเชื่อมต่อ PostgreSQL หรือการเรียก AI
-- หลัง deploy ควรตรวจ flow จริงด้วย browser เพิ่มเติม เช่น สมัคร/เข้าสู่ระบบ ส่งแชต เปลี่ยน theme และจัดการบทสนทนา
+- เมนู `4` รัน unit tests, integration tests เมื่อกำหนด `TEST_DATABASE_URL`, ESLint และ production build
+- `npm run test:integration` ต้องชี้ไปยังฐานข้อมูล PostgreSQL ทดสอบที่แยกและทิ้งได้; CI สร้าง PostgreSQL service ใหม่ทุกครั้ง
+- เมนู `5` ตรวจหน้าเว็บ, API `/health` ซึ่งตรวจ PostgreSQL, ข้อมูลสถานที่ที่มีแหล่งอ้างอิง และ CORS
+- automated checks ยังไม่ทดสอบ provider AI จริงหรือ flow ผ่าน browser; หลัง deploy ให้ตรวจการใช้งานจริงด้วย browser เพิ่มเติม
 
 ## Deploy
 
@@ -208,7 +212,7 @@ Prisma schema อยู่ที่ `apps/api/prisma/schema.prisma` และ mi
 1. ตั้ง Railway service root เป็น `apps/api`, ต่อ PostgreSQL และกำหนด environment variables ของ backend
 2. ตั้ง Vercel project root เป็น `apps/web`, ตั้ง `VITE_API_URL` เป็น URL ของ API และกำหนด `VITE_DEMO_MODE=false`
 3. ตั้ง `CLIENT_ORIGIN` บน Railway ให้ตรงกับ origin จริงของเว็บ แล้ว deploy API ใหม่
-4. เปิด API URL ตามด้วย `/health` เพื่อตรวจการตอบสนองเบื้องต้น
+4. เปิด API URL ตามด้วย `/health` เพื่อตรวจ API และ PostgreSQL; `/health/live` ใช้ตรวจ process อย่างเดียว
 
 ดู environment variables, คำสั่ง deploy และ manual browser check ที่ [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 

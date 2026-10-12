@@ -6,6 +6,7 @@
 
 ```text
 .
+├── .github/workflows/ci.yml
 ├── .gitignore
 ├── .npmrc
 ├── .prettierrc
@@ -21,11 +22,14 @@
 │   │   ├── package.json
 │   │   ├── railway.json
 │   │   ├── tsconfig.json
+│   │   ├── tsconfig.tests.json
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma
 │   │   │   ├── seed.ts
 │   │   │   └── migrations/
-│   │   │       └── 20260721000000_init/migration.sql
+│   │   │       ├── 20260721000000_init/migration.sql
+│   │   │       ├── 20261012000000_add_place_sources/migration.sql
+│   │   │       └── migration_lock.toml
 │   │   └── src/
 │   │       ├── app.ts
 │   │       ├── server.ts
@@ -45,6 +49,10 @@
 │   │       │   ├── settings.routes.ts
 │   │       │   └── user.routes.ts
 │   │       ├── services/ai.service.ts
+│   │       ├── services/travel-context.ts
+│   │       ├── tests/
+│   │       │   ├── api.integration.test.ts
+│   │       │   └── core.test.ts
 │   │       ├── types/express.d.ts
 │   │       └── validation/schemas.ts
 │   └── web/
@@ -91,8 +99,6 @@
     └── setup-postgres.bat
 ```
 
-ไม่มี `tests/` directory ใน repository ปัจจุบัน เพราะยังไม่ได้เพิ่ม unit test หรือ end-to-end test suite
-
 ## Root และ workspace
 
 | Path | หน้าที่ |
@@ -100,6 +106,7 @@
 | `package.json` | นิยาม npm workspaces, Node/npm version, คำสั่งพัฒนา, lint, build และ database |
 | `package-lock.json` | lock เวอร์ชัน dependencies ของ workspace |
 | `run.bat` | เมนูหลักสำหรับ preview, demo, PostgreSQL, local checks และ online smoke check บน Windows |
+| `.github/workflows/ci.yml` | GitHub Actions ที่รัน migrations, seed, tests, lint และ builds บน PostgreSQL service ทดสอบ |
 | `.gitignore` | กัน `.env`, dependencies, build output, logs และไฟล์ฐานข้อมูล local ออกจาก Git |
 | `.npmrc` | การตั้งค่าการติดตั้ง dependency ของ npm |
 | `.prettierrc` | รูปแบบการจัด format โค้ด |
@@ -120,6 +127,8 @@
 
 - `src/routes/` แยก route ตาม auth, chat, conversation, place, favorite, saved place, settings และ user
 - `src/services/ai.service.ts` เรียก Gemini/OpenAI และเลือก provider fallback
+- `src/services/travel-context.ts` เลือกข้อมูลสถานที่ที่เกี่ยวข้องและสร้างบริบทพร้อมแหล่งอ้างอิง/วันที่ให้ AI
+- `src/tests/` มี unit tests และ API integration tests ที่ใช้ PostgreSQL แยก
 - `src/middleware/auth.ts` ตรวจ JWT และแนบผู้ใช้กับ request
 - `src/middleware/error.ts` แปลง validation/HTTP/unexpected errors เป็น HTTP response
 - `src/validation/schemas.ts` นิยาม request validation ของ Zod
@@ -147,9 +156,9 @@
 
 ## Scripts: `scripts/`
 
-- `build-checks.bat` รัน lint และ build checks; ไม่มีการรัน unit test
+- `build-checks.bat` รัน unit tests, PostgreSQL integration tests เมื่อกำหนด `TEST_DATABASE_URL`, lint และ build
 - `setup-postgres.bat` migrate schema และ seed ข้อมูลก่อนเปิด local PostgreSQL mode
-- `online-smoke-test.ps1` เช็คหน้าเว็บ, API health และ CORS ระหว่าง origin
+- `online-smoke-test.ps1` เช็คหน้าเว็บ, API/database readiness, แหล่งข้อมูลสถานที่ และ CORS
 - `README.md` สรุปการใช้ helper scripts; ผู้ใช้ทั่วไปควรเริ่มจาก `run.bat`
 
 ## เส้นทางข้อมูลโดยย่อ

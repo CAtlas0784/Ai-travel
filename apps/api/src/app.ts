@@ -14,6 +14,8 @@ import { settingsRouter } from "./routes/settings.routes.js";
 import { userRouter } from "./routes/user.routes.js";
 import { savedPlaceRouter } from "./routes/saved-place.routes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
+import { asyncHandler } from "./lib/http.js";
+import { prisma } from "./lib/prisma.js";
 
 export const app = express();
 
@@ -38,7 +40,14 @@ app.use(
   })
 );
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health/live", (_req, res) => res.json({ status: "ok" }));
+app.get(
+  "/health",
+  asyncHandler(async (_req, res) => {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", database: "ok" });
+  })
+);
 app.use("/api/auth", authRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/conversations", conversationRouter);

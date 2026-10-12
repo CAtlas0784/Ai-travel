@@ -14,29 +14,54 @@ const demoPlaces: Place[] = [
   {
     id: "hup-pa-tat",
     name: "หุบป่าตาด",
-    description: "ป่าดึกดำบรรพ์ในถ้ำหินปูน บรรยากาศลึกลับ เหมาะกับสายธรรมชาติและถ่ายภาพ",
-    imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-    rating: 4.8,
-    openHours: "08:30 - 16:30",
-    category: "ธรรมชาติ"
+    description: "ถ้ำหุบป่าตาดอยู่ในอำเภอลานสัก เป็นหุบเขาที่มีต้นตาดและอยู่ในความดูแลของเขตห้ามล่าสัตว์ป่าถ้ำประทุน",
+    imageUrl: null,
+    rating: null,
+    openHours: null,
+    category: "ธรรมชาติ",
+    address: "ตำบลทุ่งนางาม อำเภอลานสัก จังหวัดอุทัยธานี 61160",
+    entranceFee: "ข้อมูล ททท.: ผู้ใหญ่ชาวไทย 20 บาท เด็กชาวไทย 10 บาท ชาวต่างชาติ 200 บาท; โปรดตรวจสอบกับสถานที่ก่อนเดินทาง",
+    sourceUrl: "https://thai.tourismthailand.org/Attraction/%E0%B8%96%E0%B9%89%E0%B8%B3%E0%B8%AB%E0%B8%B8%E0%B8%9B%E0%B9%88%E0%B8%B2%E0%B8%95%E0%B8%B2%E0%B8%94",
+    verifiedAt: "2026-10-12T00:00:00.000Z"
   },
   {
     id: "khao-sakae-krang",
     name: "เขาสะแกกรัง",
-    description: "จุดชมวิวเมืองอุทัยธานี เหมาะกับช่วงเช้าและเย็น เห็นแม่น้ำและเมืองแบบกว้าง",
-    imageUrl: "https://images.unsplash.com/photo-1470770903676-69b98201ea1c?auto=format&fit=crop&w=1200&q=80",
-    rating: 4.7,
-    openHours: "เปิดตลอดวัน",
-    category: "จุดชมวิว"
+    description: "ยอดเขาสะแกกรังเป็นจุดชมวิวเมืองอุทัยธานี และเป็นที่ตั้งของมณฑปประดิษฐานรอยพระพุทธบาทจำลอง",
+    imageUrl: null,
+    rating: null,
+    openHours: null,
+    category: "จุดชมวิว",
+    address: "ทางหลวงหมายเลข 3220 ตำบลอุทัยใหม่ อำเภอเมืองอุทัยธานี 61000",
+    entranceFee: null,
+    sourceUrl: "https://thai.tourismthailand.org/Attraction/%E0%B9%80%E0%B8%82%E0%B8%B2%E0%B8%AA%E0%B8%B0%E0%B9%81%E0%B8%81%E0%B8%81%E0%B8%A3%E0%B8%B1%E0%B8%87",
+    verifiedAt: "2026-10-12T00:00:00.000Z"
   },
   {
     id: "wat-tha-sung",
-    name: "วัดท่าซุง",
-    description: "วัดสำคัญของอุทัยธานี โดดเด่นด้วยวิหารแก้วและสถาปัตยกรรมที่งดงาม",
-    imageUrl: "https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1200&q=80",
-    rating: 4.9,
-    openHours: "09:00 - 16:00",
-    category: "วัด"
+    name: "วัดจันทาราม (วัดท่าซุง)",
+    description: "วัดจันทาราม หรือวัดท่าซุง ตั้งอยู่ตำบลน้ำซึม อำเภอเมืองอุทัยธานี และมีวิหารแก้ว 100 เมตร",
+    imageUrl: null,
+    rating: null,
+    openHours: null,
+    category: "วัด",
+    address: "60 หมู่ 1 ถนนอุทัยธานี-มโนรมย์ ตำบลน้ำซึม อำเภอเมืองอุทัยธานี 61000",
+    entranceFee: null,
+    sourceUrl: "https://thai.tourismthailand.org/Attraction/%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%88%E0%B8%B1%E0%B8%99%E0%B8%97%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B8%A1-%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%97%E0%B9%88%E0%B8%B2%E0%B8%8B%E0%B8%B8%E0%B8%87",
+    verifiedAt: "2026-10-12T00:00:00.000Z"
+  },
+  {
+    id: "cyber-waterfall",
+    name: "น้ำตกไซเบอร์",
+    description: "น้ำตกไซเบอร์ หรือ น้ำตกหินลาด อยู่ใกล้หมู่บ้านไซเบอร์ (บ้านซับแม่บือ) อำเภอห้วยคต และอยู่ในความรับผิดชอบของหน่วยพิทักษ์ป่าไซเบอร์",
+    imageUrl: null,
+    rating: null,
+    openHours: null,
+    category: "น้ำตก",
+    address: "ใกล้หมู่บ้านไซเบอร์ (บ้านซับแม่บือ) อำเภอห้วยคต จังหวัดอุทัยธานี",
+    entranceFee: null,
+    sourceUrl: "https://thailandtourismdirectory.go.th/attraction/3071",
+    verifiedAt: "2026-10-12T00:00:00.000Z"
   }
 ];
 
@@ -267,7 +292,7 @@ export function AppLayout() {
         },
         controller.signal
       );
-    } catch (error) {
+    } catch {
       if (!controller.signal.aborted && activeConversationIdRef.current === responseConversationId) {
         setMessages((current) =>
           current.map((message) =>

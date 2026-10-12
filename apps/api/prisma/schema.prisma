@@ -67,12 +67,14 @@ model Place {
   name             String          @unique
   slug             String          @unique
   description      String
-  imageUrl         String
-  rating           Float
-  openHours        String
+  imageUrl         String?
+  rating           Float?
+  openHours        String?
   category         String
   address          String?
   entranceFee      String?
+  sourceUrl        String?
+  verifiedAt       DateTime?       @db.Date
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   favorites        FavoritePlace[]

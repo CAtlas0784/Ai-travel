@@ -6,9 +6,15 @@ const server = app.listen(env.PORT, () => {
   console.log(`API ready on http://localhost:${env.PORT}`);
 });
 
-process.on("SIGTERM", async () => {
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
+let isShuttingDown = false;
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    server.close(() => {
+      void prisma.$disconnect().finally(() => {
+        process.exitCode = 0;
+      });
+    });
   });
-});
+}

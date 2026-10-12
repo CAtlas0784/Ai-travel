@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: uthai_travel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d uthai_travel_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uthai_travel_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uthai_travel_test?schema=public
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      CLIENT_ORIGIN: http://127.0.0.1:5173
+      GEMINI_API_KEY: ci-only-gemini-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Generate Prisma Client
+        run: npm run db:generate -w apps/api
+      - name: Apply database migrations
+        run: npm run db:deploy -w apps/api
+      - name: Seed verified places
+        run: npm run db:seed -w apps/api
+      - name: Unit tests
+        run: npm test
+      - name: PostgreSQL API integration tests
+        run: npm run test:integration
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
